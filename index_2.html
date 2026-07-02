@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>港股打新助手</title>
+<style>
+  :root{
+    --bg:#0d1b1e; --surface:#13262b; --surface-2:#1a3138; --line:#244249;
+    --ink:#e8f0f1; --ink-soft:#9fb6ba; --ink-faint:#6b8589;
+    --teal:#2dd4bf; --teal-deep:#0d9488; --amber:#fbbf24; --rose:#fb7185; --green:#34d399;
+    --shadow:0 4px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  body{max-width:540px;margin:0 auto;padding-bottom:88px;min-height:100vh}
+
+  header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#0d1b1e 0%,rgba(13,27,30,.92) 100%);backdrop-filter:blur(8px);padding:16px 20px 12px;border-bottom:1px solid var(--line)}
+  header h1{font-size:18px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:9px}
+  header h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal)}
+  header p{font-size:11px;color:var(--ink-faint);margin-top:3px;letter-spacing:.3px}
+
+  nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:540px;z-index:60;background:var(--surface);border-top:1px solid var(--line);display:flex;padding:7px 4px calc(7px + env(safe-area-inset-bottom))}
+  nav button{flex:1;background:none;border:none;color:var(--ink-faint);font-size:10.5px;font-family:inherit;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:color .15s;border-radius:10px}
+  nav button .ic{font-size:18px;line-height:1}
+  nav button.on{color:var(--teal)}
+
+  main{padding:18px 16px 0}
+  .view{display:none;animation:fade .25s ease}
+  .view.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .card h2{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px;letter-spacing:.3px}
+  .card h2 .tag{font-size:10px;font-weight:500;color:var(--teal);background:rgba(45,212,191,.12);padding:2px 7px;border-radius:6px;letter-spacing:.5px}
+  .card .sub{font-size:11px;color:var(--ink-soft);line-height:1.6;margin:-6px 0 12px}
+
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:6px;letter-spacing:.3px}
+  label .hint{color:var(--ink-faint);font-size:11px;font-weight:400}
+  input,select,textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-size:16px;font-family:inherit;padding:11px 12px;outline:none;transition:border-color .15s,box-shadow .15s;appearance:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(45,212,191,.12)}
+  input::placeholder,textarea::placeholder{color:var(--ink-faint)}
+  textarea{resize:vertical;min-height:64px;line-height:1.5}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%239fb6ba' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+  .row{display:flex;gap:10px}
+  .row .field{flex:1}
+  .mini-row{display:flex;gap:8px}
+  .mini-row .field{flex:1;margin-bottom:10px}
+
+  .seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+  .seg button{flex:1;background:none;border:none;color:var(--ink-soft);font-size:13px;font-family:inherit;padding:8px;border-radius:7px;cursor:pointer;transition:all .15s;font-weight:500}
+  .seg button.on{background:var(--teal-deep);color:#fff}
+  .fund-type{display:flex;gap:6px}
+  .fund-type button{flex:1;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);font-size:12px;font-family:inherit;padding:7px;border-radius:8px;cursor:pointer}
+  .fund-type button.on{background:var(--teal-deep);color:#fff;border-color:var(--teal-deep)}
+
+  .result{background:linear-gradient(135deg,var(--surface-2),#16323a);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:4px}
+  .result .line{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
+  .result .line:last-child{border-bottom:none}
+  .result .k{font-size:13px;color:var(--ink-soft)}
+  .result .v{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+  .result .big{padding-top:12px;margin-top:4px;border-top:1px solid var(--line)}
+  .result .big .k{font-size:14px;color:var(--ink)}
+  .result .big .v{font-size:22px;color:var(--teal);font-weight:700}
+  .pos{color:var(--green)!important}.neg{color:var(--rose)!important}.amber{color:var(--amber)!important}
+
+  .btn{width:100%;background:var(--teal-deep);color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:600;font-family:inherit;padding:13px;cursor:pointer;transition:filter .15s,transform .05s;letter-spacing:.5px}
+  .btn:active{transform:scale(.99)}.btn:hover{filter:brightness(1.08)}
+  .btn.ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--ink)}
+  .btn.sm{padding:9px;font-size:13px;width:auto}
+
+  .note{font-size:11px;color:var(--ink-faint);line-height:1.55;margin-top:10px;padding:10px 12px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.18);border-radius:9px}
+  .note b{color:var(--amber)}
+  .note.teal{background:rgba(45,212,191,.07);border-color:rgba(45,212,191,.18)}
+  .note.teal b{color:var(--teal)}
+
+  .slider-wrap{display:flex;align-items:center;gap:12px}
+  input[type=range]{flex:1;appearance:none;height:6px;background:var(--surface-2);border:none;border-radius:3px;padding:0}
+  input[type=range]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:var(--teal);cursor:pointer;box-shadow:0 0 8px rgba(45,212,191,.5)}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:var(--teal);cursor:pointer}
+  .slider-val{flex:0 0 56px;text-align:right;font-size:18px;font-weight:700;color:var(--teal);font-variant-numeric:tabular-nums}
+
+  .stepper{display:flex;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .stepper button{width:46px;background:none;border:none;color:var(--teal);font-size:22px;font-family:inherit;cursor:pointer;padding:9px 0;font-weight:300}
+  .stepper button:active{background:var(--line)}
+  .stepper input{border:none;border-radius:0;text-align:center;background:none;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+
+  .empty{text-align:center;padding:36px 20px;color:var(--ink-faint)}
+  .empty .ic{font-size:36px;opacity:.4;margin-bottom:10px}
+  .empty p{font-size:13px;line-height:1.6}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .stat .lbl{font-size:11px;color:var(--ink-soft);margin-bottom:4px}
+  .stat .num{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+
+  .divider{height:1px;background:var(--line);margin:16px 0}
+  .small-link{font-size:12px;color:var(--teal);text-align:center;cursor:pointer;padding:8px;display:block}
+  .foot-note{text-align:center;font-size:10px;color:var(--ink-faint);padding:18px 20px;line-height:1.6}
+  .del{font-size:11px;color:var(--ink-faint);background:none;border:none;cursor:pointer;padding:4px}
+
+  /* 设置-券商/账户 */
+  .broker-block{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  .broker-block .bhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .broker-block .bname{font-size:15px;font-weight:600;color:var(--teal)}
+  .acct-line{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .acct-line input:first-child{flex:1.3}
+  .acct-line input:last-of-type{flex:1}
+  .acct-line .rm{flex:0 0 auto;color:var(--rose);background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px}
+  .add-acct{font-size:12px;color:var(--teal);background:none;border:1px dashed var(--line);border-radius:8px;padding:7px;width:100%;cursor:pointer;margin-top:4px}
+  .tiny-label{font-size:10px;color:var(--ink-faint);margin-bottom:3px}
+
+  /* 台账 */
+  .ledger-item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:11px}
+  .ledger-item.applied{border-left:3px solid var(--teal)}
+  .ledger-item.pending{border-left:3px solid var(--ink-faint)}
+  .ledger-item .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px}
+  .ledger-item .nm{font-size:15px;font-weight:600}
+  .ledger-item .code{font-size:11px;color:var(--ink-faint);margin-left:6px;font-weight:400}
+  .status-pill{font-size:10px;font-weight:600;padding:3px 9px;border-radius:12px;white-space:nowrap}
+  .status-pill.applied{background:rgba(45,212,191,.15);color:var(--teal)}
+  .status-pill.pending{background:rgba(107,133,137,.18);color:var(--ink-soft)}
+  .status-pill.won{background:rgba(52,211,153,.15);color:var(--green)}
+  .status-pill.lost{background:rgba(251,113,133,.12);color:var(--rose)}
+  .ledger-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-soft);margin-bottom:8px}
+  .ledger-meta b{color:var(--ink);font-weight:600}
+  .ledger-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .mini-btn{font-size:11px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer}
+  .mini-btn.go{background:var(--teal-deep);color:#fff;border-color:var(--teal-deep)}
+  .win-form{margin-top:10px;padding:12px;background:var(--surface-2);border-radius:10px;border:1px solid var(--line)}
+
+  /* 时间轴 */
+  .ipo-row{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px}
+  .ipo-row .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .ipo-row .nm{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .ipo-row .nm .swatch{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+  .timeline-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin:0 -4px}
+  .timeline{position:relative;min-width:100%;padding:4px}
+  .tl-day-head{display:flex;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .tl-day{flex:0 0 var(--col,38px);text-align:center;font-size:9px;color:var(--ink-faint);padding-bottom:5px}
+  .tl-day.over{color:var(--rose);font-weight:700}
+  .tl-day .dd{font-size:12px;color:var(--ink-soft);font-weight:600}
+  .tl-day.over .dd{color:var(--rose)}
+  .tl-bar-row{display:flex;align-items:center;height:30px;margin-bottom:5px;position:relative}
+  .tl-bar{position:absolute;height:22px;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:600;color:#06231f;white-space:nowrap;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .tl-load-row{display:flex;border-top:1px dashed var(--line);margin-top:4px;padding-top:6px}
+  .tl-load{flex:0 0 var(--col,38px);text-align:center;font-size:8px;padding:2px 0;font-variant-numeric:tabular-nums}
+  .tl-load.over{background:rgba(251,113,133,.18);color:var(--rose);font-weight:700;border-radius:3px}
+  .tl-load.ok{color:var(--ink-faint)}
+  .tl-label{font-size:10px;color:var(--ink-faint);margin:4px 0 2px;padding-left:4px}
+  .conflict-banner{border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6}
+  .conflict-banner.bad{background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.35);color:var(--rose)}
+  .conflict-banner.good{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--green)}
+  .conflict-banner b{font-weight:700}
+  .peak-line{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
+  .peak-line:last-child{border:none}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--ink-soft);margin-top:8px;padding-left:4px}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+  .alloc-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px}
+  .alloc-card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .alloc-bar{height:7px;background:var(--bg);border-radius:4px;overflow:hidden;margin:8px 0 6px}
+  .alloc-bar div{height:100%;background:linear-gradient(90deg,var(--teal-deep),var(--teal));border-radius:4px}
+  .alloc-detail{font-size:11px;color:var(--ink-soft);display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot"></span>港股打新助手</h1>
+  <p id="headerSub">招股价区间 · 资金策略 · 申购台账 · 冲突检查</p>
+</header>
+
+<main>
+
+<!-- ========== 第1格:录入新股 ========== -->
+<section class="view on" id="v-entry">
+  <div class="card" id="aiEntryCard" style="display:none">
+    <h2>🤖 AI 解析招股要素 <span class="tag">选填</span></h2>
+    <p class="sub">把招股书摘要或一段描述粘进来,AI 自动拆出名称、代码、招股价、每手、上市日等,核对后填入。</p>
+    <textarea id="aiEntryText" placeholder="例:精锋医疗,02675.HK,招股价50-54.8港元,每手100股,7月8日上市,保荐人中金..." style="width:100%;min-height:72px;padding:10px;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--ink);resize:vertical;font-family:inherit"></textarea>
+    <button class="btn" onclick="aiParseEntry()" id="aiEntryBtn" style="margin-top:8px">解析并预览</button>
+  </div>
+  <div class="card">
+    <h2>录入本批新股 <span class="tag">第一步</span></h2>
+    <p class="sub">把这一批在打的新股都填进来。后面<b style="color:var(--ink)">分配、冲突、计算</b>都用这个列表,只需录一次。暗盘/出结果日按香港交易日<b style="color:var(--teal)">自动倒推</b>。</p>
+    <div id="ipoList"></div>
+    <button class="btn ghost" onclick="addIpo()" style="margin-top:4px">+ 添加一只新股</button>
+  </div>
+  <div class="note teal" style="margin-bottom:14px">填完后,点底部<b>「分配」</b>进入下一步:设每只的申购偏好、生成账户分配方案。</div>
+</section>
+
+<!-- ========== 分配(第2格):智能账户分配 ========== -->
+<section class="view" id="v-alloc">
+  <div class="card" id="aiAllocCard" style="display:none">
+    <h2>🤖 AI 解析分配偏好 <span class="tag">选填</span></h2>
+    <p class="sub">用一句话说你的打新偏好,AI 自动设好每只的优先级/仓位/认购方式。</p>
+    <textarea id="aiAllocText" placeholder="例:这批偏好打111和444,111优先,444小仓现金摸一摸,其他融资" style="width:100%;min-height:60px;padding:10px;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--ink);resize:vertical;font-family:inherit"></textarea>
+    <button class="btn" onclick="aiParseAlloc()" id="aiAllocBtn" style="margin-top:8px">解析并预览</button>
+  </div>
+  <div class="card">
+    <h2>第一步 · 设申购偏好 <span class="tag">每只</span></h2>
+    <p class="sub">对每只新股设:要不要打、优先级、仓位、认购方式。钱不够时优先保高优先级。</p>
+    <div id="prefList"></div>
+  </div>
+  <div class="card">
+    <h2>第二步 · 总投入比例 <span class="tag">圈定盘子</span></h2>
+    <p class="sub">这次打新,总共动用全部账户资金的多少比例。注意:资金不能跨账户合并,引擎会在各账户独立额度内分配。</p>
+    <div class="field">
+      <label>总投入比例 <span class="hint">占所有账户现金合计</span></label>
+      <div class="slider-wrap">
+        <input id="allocRatio" type="range" min="10" max="100" step="5" value="100">
+        <span class="slider-val" id="allocRatioVal">100%</span>
+      </div>
+    </div>
+    <div class="result" style="margin-top:4px">
+      <div class="line"><span class="k">所有账户现金合计</span><span class="v" id="totalCashAll">—</span></div>
+      <div class="line"><span class="k">本次投入预算</span><span class="v" style="color:var(--teal)" id="allocBudget">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>第三步 · 分配策略 <span class="tag">铺满户头后</span></h2>
+    <p class="sub">两个策略都<b style="color:var(--ink)">先铺满所有人头账户(各1手)</b>,区别在剩余预算怎么加码:</p>
+    <div class="fund-type" style="margin-bottom:8px">
+      <button id="strat-b" class="on" onclick="setStrategy('groupB')" style="padding:10px 8px;font-size:12px">优先乙组</button>
+      <button id="strat-spread" onclick="setStrategy('spread')" style="padding:10px 8px;font-size:12px">分层平摊</button>
+    </div>
+    <div id="stratDesc" style="font-size:11px;color:var(--ink-soft);padding:8px 10px;background:rgba(45,212,191,.07);border-radius:8px;line-height:1.6"></div>
+  </div>
+  <button class="btn" onclick="runAllocation()" style="margin-bottom:14px">⚡ 生成智能分配方案</button>
+  <div id="allocResult"></div>
+  <div class="note teal" style="margin-bottom:14px">方案生成后可<b>手动调每个账户的手数</b>(不超过该账户能打的上限),再点底部<b>「冲突」</b>检查。</div>
+</section>
+
+<!-- ========== 冲突(第3格):按账户检查 ========== -->
+<section class="view" id="v-conflict">
+  <div class="card">
+    <h2>检查资金冲突 <span class="tag">第三步</span></h2>
+    <p class="sub">基于上一步的分配方案,按<b style="color:var(--ink)">每个账户独立</b>判断:挂在同一账户的多只新股,在时间轴上的占用会不会超过该账户余额。</p>
+    <div id="acctLimitList"></div>
+  </div>
+  <button class="btn" onclick="checkConflict()" style="margin-bottom:14px">检查资金冲突</button>
+  <div id="conflictResult"></div>
+  <div class="note" style="margin-bottom:14px">如有冲突,回<b>「分配」</b>降低相关新股投入或换账户;没问题就去<b>「计算」</b>看每只的手数成本明细。</div>
+</section>
+
+<!-- ========== 计算(第4格):每只手数+成本 ========== -->
+<section class="view" id="v-calc">
+  <div class="card">
+    <h2>每只手数与成本 <span class="tag">按方案</span></h2>
+    <p class="sub">根据分配方案,展示每只新股在各账户的手数和成本。价格一律按<b style="color:var(--ink)">上限</b>算。</p>
+    <div id="calcList"></div>
+  </div>
+  <div class="card" id="calcSummaryCard" style="display:none">
+    <h2>整批汇总 <span class="tag">合计</span></h2>
+    <div class="result" id="calcSummary"></div>
+    <button class="btn" style="margin-top:14px" onclick="commitBatch()">把已投入的新股加入台账</button>
+  </div>
+</section>
+
+<!-- ========== 台账(第4格) ========== -->
+<section class="view" id="v-ledger">
+  <div class="stat-grid">
+    <div class="stat"><div class="lbl">新股总数</div><div class="num" id="s-total">0</div></div>
+    <div class="stat"><div class="lbl">已申购</div><div class="num" id="s-applied">0</div></div>
+    <div class="stat"><div class="lbl">已中签</div><div class="num" id="s-won">0</div></div>
+    <div class="stat"><div class="lbl">待回填结果</div><div class="num amber" id="s-await">0</div></div>
+  </div>
+  <div class="card" id="pnlCard" style="display:none;margin-bottom:14px">
+    <h2>累计收益 <span class="tag">已卖出</span></h2>
+    <div class="result">
+      <div class="line"><span class="k">已结算笔数</span><span class="v" id="p-count">0</span></div>
+      <div class="line"><span class="k">毛盈亏合计</span><span class="v" id="p-gross">—</span></div>
+      <div class="line big"><span class="k">扣息后净盈亏</span><span class="v" id="p-net">—</span></div>
+    </div>
+    <div class="note" style="margin-bottom:0">仅统计已填卖出价的记录。盈亏 = 中签股数 ×(卖出价 − 最终招股价),净盈亏再扣融资利息与手续费。<b>不含</b>佣金/印花税/交易征费等券商交易成本,请自行斟酌。</div>
+  </div>
+  <div id="ledgerList"></div>
+  <div class="small-link" id="clearLedger" style="display:none" onclick="clearAllLedger()">清空全部台账</div>
+</section>
+
+<!-- ========== 设置(第5格) ========== -->
+<section class="view" id="v-settings">
+  <div class="card">
+    <h2>我的券商 <span class="tag">规则库</span></h2>
+    <p class="sub">填一次,各页自动调用。截止时间用相对规则:相对招股截止日 T 推算。</p>
+    <div id="brokerList"></div>
+    <button class="btn ghost" onclick="addBroker()" style="margin-top:4px">+ 添加券商</button>
+  </div>
+  <div class="card">
+    <h2>账户汇总 <span class="tag">按持有人</span></h2>
+    <div class="result">
+      <div class="line"><span class="k">账户总数</span><span class="v" id="sum-acct">0</span></div>
+    </div>
+    <div id="acctBreakdown" style="margin-top:10px"></div>
+    <div class="note">港股打新<b>资金不能跨账户合并</b>:每只新股只能用单个账户的钱打。同一持有人(本人/配偶)跨券商也算同一人,对同一只新股只能用一个账户。</div>
+  </div>
+  <div class="card">
+    <h2>AI 智能解析 <span class="tag">已内置</span></h2>
+    <p class="sub">录入页/分配页可用 AI 把一段文字自动拆成结构化信息,已内置后端,直接可用。如想用自己的智谱额度,可在下方填你自己的后端地址覆盖。</p>
+    <div class="field">
+      <label>自定义后端地址 <span class="hint">选填,留空用内置</span></label>
+      <input id="aiEndpoint" type="text" placeholder="留空即用内置后端" oninput="saveAiEndpoint(this.value)" style="font-size:13px">
+    </div>
+    <div id="aiStatus" style="font-size:11px;margin-top:4px"></div>
+  </div>
+  <button class="btn ghost sm" style="width:100%" onclick="resetAll()">⚠ 清空所有设置数据</button>
+</section>
+
+</main>
+
+<nav>
+  <button class="on" onclick="tab('entry',this)"><span class="ic">📝</span>录入</button>
+  <button onclick="tab('alloc',this)"><span class="ic">💰</span>分配</button>
+  <button onclick="tab('conflict',this)"><span class="ic">📅</span>冲突</button>
+  <button onclick="tab('calc',this)"><span class="ic">🧮</span>计算</button>
+  <button onclick="tab('ledger',this)"><span class="ic">📋</span>台账</button>
+  <button onclick="tab('settings',this)"><span class="ic">⚙️</span>设置</button>
+</nav>
+
+
+<div class="foot-note">
+  数据仅保存在你自己的浏览器本地,不上传任何服务器。<br>
+  计算为估算,中签结果以券商公布为准。
+</div>
+
+<script>
+/* ============ 工具函数 ============ */
+const $ = id => document.getElementById(id);
+const num = id => { const v=parseFloat($(id).value); return isNaN(v)?0:v; };
+const fmt = n => (n===0||isNaN(n))?'0':Math.round(n).toLocaleString('en-US');
+const hk = n => 'HK$'+fmt(n);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* 存储层:开局探测localStorage可用性。不可用(如本地文件opaque origin)则全程用内存,
+   保证读写路径一致,避免"读到空→生成新blank→编辑存不进"的bug */
+const _mem = {};
+let _lsOK = false;
+(function(){ try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); _lsOK=true; }catch(e){ _lsOK=false; } })();
+function lsRaw(k){ if(_lsOK){ try{ return localStorage.getItem(k); }catch(e){ return _mem[k]!=null?JSON.stringify(_mem[k]):null; } } return _mem[k]!=null?JSON.stringify(_mem[k]):null; }
+function lsGet(k){ const r=lsRaw(k); if(r==null) return []; try{ return JSON.parse(r)||[]; }catch(e){ return []; } }
+function lsSet(k,v){ if(_lsOK){ try{ localStorage.setItem(k,JSON.stringify(v)); return; }catch(e){} } _mem[k]=v; }
+function lsGetObj(k,def){ const r=lsRaw(k); if(r==null) return def; try{ const v=JSON.parse(r); return v==null?def:v; }catch(e){ return def; } }
+
+const LS_LEDGER='ipo_v3_ledger';
+const LS_BROKERS='ipo_v3_brokers';
+const LS_IPOS='ipo_v3_ipos';
+
+/* ============ 统一新股数据模型 ============
+   一只新股:{ id, name, code, priceLow, priceHigh, lotSize,
+              listing, applyDate, fund('cash'|'margin'), lev,
+              invest(本次投入金额, 分配页设定) }
+   冲突/分配/计算三页全部读这一个列表 */
+function blankIpo(){
+  return { id:Date.now()+Math.floor(Math.random()*1000), name:'', code:'',
+           sponsor:'', greenShoe:'none', greenShoeWho:'',
+           priceLow:'', priceHigh:'', lotSize:'', listing:'', applyDate:'',
+           fund:'cash', lev:90, invest:0,
+           wanted:true, priority:2, position:'normal' };
+}
+function getIpos(){
+  let a=lsGet(LS_IPOS);
+  if(!Array.isArray(a)||!a.length){
+    a=[blankIpo()];
+    saveIpos(a);   /* 关键:首次立即存入,使id稳定,后续编辑能写回同一条 */
+  }
+  return a;
+}
+function saveIpos(a){ lsSet(LS_IPOS,a); }
+function addIpo(){ const a=getIpos(); a.push(blankIpo()); saveIpos(a); renderIpoList(); }
+function delIpo(id){ let a=getIpos().filter(x=>x.id!==id); if(!a.length)a=[blankIpo()]; saveIpos(a); renderIpoList(); }
+function updIpo(id,k,v){ const a=getIpos(); const it=a.find(x=>x.id===id); if(it){it[k]=v; saveIpos(a);} }
+function setIpoFund(id,t){ updIpo(id,'fund',t); renderPrefList(); } /* 兼容保留 */
+
+/* 每只新股的派生计算:入场费、每手占用、按投入反推手数、成本 */
+function calcIpo(it, marginRateDefault){
+  const pHigh=parseFloat(it.priceHigh)||0;
+  const lotSize=parseFloat(it.lotSize)||0;
+  const entry=pHigh*lotSize; // 入场费=上限价×每手
+  const invest=parseFloat(it.invest)||0;
+  let lots=0, total=0, own=0, loan=0, interest=0, fee=0, need=0;
+  let perLotOccupy=entry;
+
+  /* 取该新股对应券商的利率/手续费?简化:用传入默认或固定 */
+  const rate = marginRateDefault!=null ? marginRateDefault : 5;
+  const days = 7; // 融资天数默认,可后续做成可配
+
+  if(it.fund==='margin'){
+    const lev=(parseFloat(it.lev)||90)/100;
+    const ownPerLot=entry*(1-lev);
+    const intPerLot=entry*lev*(rate/100)/365*days;
+    perLotOccupy=ownPerLot+intPerLot;
+    fee=100;
+  }else{
+    perLotOccupy=entry;
+    fee=0;
+  }
+  if(entry>0 && invest>0){ lots=Math.floor(invest/perLotOccupy); }
+  if(lots<0)lots=0;
+
+  total=entry*lots;
+  if(it.fund==='margin'){
+    const lev=(parseFloat(it.lev)||90)/100;
+    loan=total*lev; own=total-loan;
+    interest=loan*(rate/100)/365*days;
+  }else{ own=total; }
+  need=own+interest+fee;
+
+  return {entry,lotSize,pHigh,invest,lots,total,own,loan,interest,fee,need,perLotOccupy};
+}
+
+/* ============ 导航 ============ */
+function tab(name, el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  $('v-'+name).classList.add('on');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  if(name==='entry'){ renderIpoList(); }
+  if(name==='alloc'){ renderPrefList(); updateBudget(); }
+  if(name==='conflict'){ syncCashFromAccounts(); }
+  if(name==='calc'){ renderCalcList(); }
+  if(name==='ledger'){ renderLedger(); }
+  if(name==='settings'){ renderBrokers(); renderAcctSummary(); refreshAiUI(); }
+  window.scrollTo(0,0);
+}
+
+/* 账户独立额度:渲染冲突页第二步的账户列表 */
+function accountsTotal(){ return allAccounts().reduce((s,a)=>s+(a.amount||0),0); }
+function syncCashFromAccounts(){
+  const accts=allAccounts();
+  const box=$('acctLimitList');
+  if(!box) return;
+  if(!accts.length){ box.innerHTML='<div class="empty" style="padding:20px"><p>「设置」里还没有账户<br>先去添加券商和账户</p></div>'; return; }
+  box.innerHTML=accts.map(a=>`
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed rgba(255,255,255,.06)">
+      <span style="font-size:13px">${esc(a.broker)} / ${esc(a.name)} <span style="font-size:11px;color:var(--ink-faint)">(${esc(a.holder)})</span></span>
+      <span style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums">现金${fmtK(a.amount)}</span>
+    </div>`).join('');
+}
+
+/* ============ 香港假期 + 倒推 ============ */
+const HK_HOLIDAYS={
+  2026:['2026-01-01','2026-02-17','2026-02-18','2026-02-19','2026-04-03','2026-04-06','2026-04-07','2026-05-01','2026-05-25','2026-06-19','2026-07-01','2026-09-26','2026-10-01','2026-10-19','2026-12-25'],
+  2025:['2025-01-01','2025-01-29','2025-01-30','2025-01-31','2025-04-04','2025-04-18','2025-04-21','2025-05-01','2025-05-05','2025-05-31','2025-07-01','2025-10-01','2025-10-07','2025-10-29','2025-12-25','2025-12-26'],
+  2027:['2027-01-01','2027-02-06','2027-02-08','2027-02-09','2027-03-26','2027-03-29','2027-05-01','2027-05-13','2027-06-09','2027-07-01','2027-09-16','2027-10-01','2027-10-08','2027-12-25']
+};
+function toISO(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function parseDate(s){ if(!s)return null; const d=new Date(s+'T00:00:00'); return isNaN(d)?null:d; }
+function daysBetween(d1,d2){ return Math.round((d2-d1)/86400000); }
+function isHKTradingDay(d){ const day=d.getDay(); if(day===0||day===6)return false; const h=HK_HOLIDAYS[d.getFullYear()]||[]; return !h.includes(toISO(d)); }
+function prevTradingDay(date){ let d=new Date(date); d.setDate(d.getDate()-1); while(!isHKTradingDay(d))d.setDate(d.getDate()-1); return d; }
+function deriveDates(listing){ const l=parseDate(listing); if(!l)return null; const dp=prevTradingDay(l); const rd=prevTradingDay(dp); return {listing:l,darkPool:dp,resultDay:rd}; }
+function fmtMD(d){ if(!d)return'—'; const wd=['日','一','二','三','四','五','六'][d.getDay()]; return `${d.getMonth()+1}/${d.getDate()}(周${wd})`; }
+const PALETTE=['#2dd4bf','#fbbf24','#fb7185','#a78bfa','#60a5fa','#34d399','#f472b6','#fb923c'];
+/* 融资占款天数:申购日→出结果日的实际日历天数(资金冻结区间);缺日期时回退默认7天 */
+function financeDays(ipo){
+  if(ipo && ipo.applyDate && ipo.listing){
+    const der=deriveDates(ipo.listing); const p=parseDate(ipo.applyDate);
+    if(der && p){ const d=daysBetween(p,der.resultDay); if(d>0) return d; }
+  }
+  return 7;
+}
+
+/* ============ 冲突页:新股录入 ============ */
+/* 返回某日为何休市,可交易返回null */
+function nonTradingReason(d){
+  const day=d.getDay();
+  if(day===0) return '周日';
+  if(day===6) return '周六';
+  const hols=HK_HOLIDAYS[d.getFullYear()]||[];
+  if(hols.includes(toISO(d))) return '香港公众假期';
+  return null;
+}
+function derivedHtml(it){
+  if(!it.listing) return '';
+  const ld=parseDate(it.listing);
+  if(!ld) return '';
+  /* 校验:上市日不能是休市日 */
+  const reason=nonTradingReason(ld);
+  if(reason){
+    return `<span style="color:var(--rose);font-weight:600">⚠️ 上市日填写错误</span><br><span style="color:var(--rose)">${fmtMD(ld)} 是${reason},港股不会在休市日上市。请重新填写正确的上市日。</span>`;
+  }
+  /* 校验:申购日也不应是休市日(可申购通常在交易日,温和提示) */
+  let applyWarn='';
+  if(it.applyDate){
+    const ad=parseDate(it.applyDate);
+    if(ad){
+      const ar=nonTradingReason(ad);
+      if(ar) applyWarn=`<br><span style="color:var(--amber)">注:申购日 ${fmtMD(ad)} 是${ar},请确认是否填错</span>`;
+    }
+  }
+  const der=deriveDates(it.listing);
+  if(!der) return '';
+  return `暗盘 <b style="color:var(--ink)">${fmtMD(der.darkPool)}</b> · 出结果/释放 <b style="color:var(--teal)">${fmtMD(der.resultDay)}</b>
+    ${it.applyDate?`<br>占用 <b style="color:var(--ink)">${fmtMD(parseDate(it.applyDate))} → ${fmtMD(der.resultDay)}</b> (${Math.max(0,daysBetween(parseDate(it.applyDate),der.resultDay))}天)`:'<br><span style="color:var(--amber)">↑ 填申购日后显示占用</span>'}${applyWarn}`;
+}
+/* 是否有上市日填成休市日的错误(用于阻止后续步骤) */
+function hasListingError(){
+  return getIpos().some(it=>{
+    if(!it.listing) return false;
+    const d=parseDate(it.listing);
+    return d && nonTradingReason(d);
+  });
+}
+function ipoHasDateError(it){
+  if(!it.listing) return false;
+  const d=parseDate(it.listing);
+  return !!(d && nonTradingReason(d));
+}
+/* 轻量更新:只刷新某只新股的倒推显示块,不重绘整个列表(避免打断输入) */
+function updateDerived(id){
+  const it=getIpos().find(x=>x.id===id);
+  const box=document.getElementById('der_'+id);
+  if(it&&box){
+    const html=derivedHtml(it);
+    box.innerHTML=html;
+    box.style.display=html?'block':'none';
+    /* 同步错误/正常背景 */
+    if(ipoHasDateError(it)){
+      box.style.background='rgba(251,113,133,.1)';
+      box.style.border='1px solid rgba(251,113,133,.3)';
+      box.style.color='';
+    }else{
+      box.style.background='rgba(45,212,191,.07)';
+      box.style.border='';
+      box.style.color='var(--ink-soft)';
+    }
+  }
+}
+
+function renderIpoList(){
+  const a=getIpos();
+  $('ipoList').innerHTML=a.map((it,i)=>{
+    const color=PALETTE[i%PALETTE.length];
+    const dHtml=derivedHtml(it);
+    return `
+    <div class="ipo-row">
+      <div class="top">
+        <span class="nm"><span class="swatch" style="background:${color}"></span>
+          <input type="text" value="${esc(it.name)}" placeholder="新股 ${i+1}" style="width:110px;padding:6px 9px;font-size:13px" oninput="updIpo(${it.id},'name',this.value)"></span>
+        <button class="del" style="color:var(--rose)" onclick="delIpo(${it.id})">删除</button>
+      </div>
+      <div class="mini-row">
+        <div class="field" style="flex:1.3"><div class="tiny-label">股票代码 <span style="color:var(--ink-faint)">选填</span></div>
+          <input type="text" value="${esc(it.code)}" placeholder="如 02675" inputmode="numeric" oninput="updIpo(${it.id},'code',this.value)" style="font-size:13px;padding:8px 9px"></div>
+        <div class="field" style="flex:1.7"><div class="tiny-label">保荐人 <span style="color:var(--ink-faint)">选填</span></div>
+          <input type="text" value="${esc(it.sponsor)}" placeholder="如 中金/摩根" oninput="updIpo(${it.id},'sponsor',this.value)" style="font-size:13px;padding:8px 9px"></div>
+      </div>
+      <div class="field" style="margin-bottom:10px"><div class="tiny-label">绿鞋(超额配售) <span style="color:var(--ink-faint)">选填</span></div>
+        <div class="fund-type" style="margin-bottom:6px">
+          <button class="${it.greenShoe==='none'?'on':''}" onclick="setGreenShoe(${it.id},'none')">无绿鞋</button>
+          <button class="${it.greenShoe==='yes'?'on':''}" onclick="setGreenShoe(${it.id},'yes')">有绿鞋</button>
+        </div>
+        ${it.greenShoe==='yes'?`<input type="text" value="${esc(it.greenShoeWho)}" placeholder="哪家行使绿鞋,如 高盛" oninput="updIpo(${it.id},'greenShoeWho',this.value)" style="font-size:13px;padding:8px 9px">`:''}
+      </div>
+      <div class="mini-row">
+        <div class="field" style="flex:1"><div class="tiny-label">招股价下限</div>
+          <input type="number" value="${it.priceLow}" placeholder="51.00" inputmode="decimal" oninput="updIpo(${it.id},'priceLow',this.value)" style="font-size:13px;padding:8px 9px"></div>
+        <div class="field" style="flex:1"><div class="tiny-label">招股价上限</div>
+          <input type="number" value="${it.priceHigh}" placeholder="54.80" inputmode="decimal" oninput="updIpo(${it.id},'priceHigh',this.value)" style="font-size:13px;padding:8px 9px"></div>
+        <div class="field" style="flex:0.8"><div class="tiny-label">每手股数</div>
+          <input type="number" value="${it.lotSize}" placeholder="100" inputmode="numeric" oninput="updIpo(${it.id},'lotSize',this.value)" style="font-size:13px;padding:8px 9px"></div>
+      </div>
+      <div class="mini-row">
+        <div class="field"><div class="tiny-label">上市日</div>
+          <input type="date" value="${it.listing}" oninput="updIpo(${it.id},'listing',this.value);updateDerived(${it.id})" style="font-size:13px;padding:8px 9px"></div>
+        <div class="field"><div class="tiny-label">我的申购日</div>
+          <input type="date" value="${it.applyDate}" oninput="updIpo(${it.id},'applyDate',this.value);updateDerived(${it.id})" style="font-size:13px;padding:8px 9px"></div>
+      </div>
+      <div id="der_${it.id}" style="font-size:11px;margin-top:8px;padding:8px 10px;border-radius:8px;line-height:1.7;display:${dHtml?'block':'none'};${ipoHasDateError(it)?'background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.3)':'background:rgba(45,212,191,.07);color:var(--ink-soft)'}">${dHtml}</div>
+    </div>`;
+  }).join('');
+}
+function setGreenShoe(id,v){ updIpo(id,'greenShoe',v); renderIpoList(); }
+
+/* 投入比例已移至分配页 */
+
+/* 冲突检查:用统一列表,占用金额=该只的入场费×(暂按投入反推的手数 或 若未分配则按1手提示) */
+function checkConflict(){
+  const out=$('conflictResult');
+  if(hasListingError()){ out.innerHTML='<div class="conflict-banner bad">⚠️ 有新股的<b>上市日填成了休市日</b>(周末或公众假期)。请回「录入」页修正后再检查冲突。</div>'; return; }
+  const raw=getIpos();
+  /* 收集已分配的新股 + 其账户占用。每只新股对每个账户产生一条"占用记录" */
+  const occByAcct={}; // key: broker/name/holder -> {label, limit, isMargin分开, records:[{name,pay,release,amount,color}]}
+  let anyAlloc=false, dateErr=null;
+
+  raw.forEach((it,idx)=>{
+    if(!it.name||!it.listing||!it.applyDate) return;
+    if(!(parseFloat(it.priceHigh)>0)||!(parseFloat(it.lotSize)>0)) return;
+    const der=deriveDates(it.listing); if(!der) return;
+    const p=parseDate(it.applyDate), r=der.resultDay;
+    if(r<p){ dateErr=it.name; return; }
+    const allocs=it._allocations||[];
+    if(!allocs.length) return;
+    anyAlloc=true;
+    const color=PALETTE[idx%PALETTE.length];
+    allocs.forEach(al=>{
+      const key=al.broker+'/'+al.name;
+      if(!occByAcct[key]) occByAcct[key]={broker:al.broker, name:al.name, holder:al.holder, records:[]};
+      occByAcct[key].records.push({name:it.name, pay:it.applyDate, release:toISO(r), amount:al.cost, isMargin:al.isMargin, color});
+    });
+  });
+
+  if(dateErr){ out.innerHTML=`<div class="conflict-banner bad">「${esc(dateErr)}」申购日晚于出结果日,请检查。</div>`; return; }
+  if(!anyAlloc){ out.innerHTML='<div class="conflict-banner bad">还没有分配方案。请先去「分配」页生成智能分配方案,再回来检查冲突(冲突按账户判断,需要先知道每只用哪个账户)。</div>'; return; }
+
+  /* 账户现金查询 */
+  const accts=allAccounts();
+  function acctCash(broker,name){
+    const a=accts.find(x=>x.broker===broker&&x.name===name);
+    return a?a.amount:0;
+  }
+
+  /* 每个账户一条现金时间轴(融资也占现金,不分池) */
+  let anyConflict=false;
+  let cards='';
+  Object.keys(occByAcct).forEach(key=>{
+    const acct=occByAcct[key];
+    const recs=acct.records; // 该账户所有占用记录(现金+融资都占现金)
+    if(!recs.length) return;
+    const limit=acctCash(acct.broker,acct.name);
+    let minD=null,maxD=null;
+    recs.forEach(rc=>{ const p=parseDate(rc.pay),r=parseDate(rc.release); if(!minD||p<minD)minD=p; if(!maxD||r>maxD)maxD=r; });
+    const span=daysBetween(minD,maxD)+1;
+    const days=[]; for(let i=0;i<span&&i<90;i++){ const d=new Date(minD); d.setDate(d.getDate()+i); days.push(d); }
+    const load=new Array(days.length).fill(0);
+    recs.forEach(rc=>{ const p=parseDate(rc.pay),r=parseDate(rc.release); days.forEach((d,idx)=>{ if(d>=p&&d<r) load[idx]+=rc.amount; }); });
+    const peak=Math.max(...load,0);
+    const over=peak>limit;
+    if(over) anyConflict=true;
+
+    const colW=Math.max(30,Math.min(44,Math.floor(320/days.length)));
+    cards+=`<div class="card"><h2>${esc(acct.broker)} / ${esc(acct.name)} <span class="tag">现金账户</span></h2>`;
+    cards+=`<div style="font-size:11px;color:var(--ink-faint);margin-bottom:10px">持有人 ${esc(acct.holder)} · 现金额度 ${hk(limit)}</div>`;
+    cards+=`<div class="conflict-banner ${over?'bad':'good'}" style="margin-bottom:12px">${over?`⚠️ <b>超额</b> 峰值占用现金 ${hk(peak)} > 额度 ${hk(limit)}(缺 ${hk(peak-limit)})`:`✓ 峰值占用现金 ${hk(peak)} ≤ 额度 ${hk(limit)}`}</div>`;
+    cards+=`<div class="legend">`;
+    recs.forEach(rc=>{ cards+=`<span><i style="background:${rc.color}"></i>${esc(rc.name)}${rc.isMargin?'(融)':''}</span>`; });
+    cards+=`</div><div class="timeline-wrap"><div class="timeline" style="--col:${colW}px"><div class="tl-day-head">`;
+    days.forEach((d,idx)=>{ const o=load[idx]>limit; cards+=`<div class="tl-day ${o?'over':''}"><div>${d.getMonth()+1}月</div><div class="dd">${d.getDate()}</div></div>`; });
+    cards+=`</div>`;
+    recs.forEach(rc=>{ const p=parseDate(rc.pay),r=parseDate(rc.release); const s=daysBetween(minD,p),e=daysBetween(minD,r); const w=Math.max(1,e-s)*colW-4; cards+=`<div class="tl-bar-row"><div class="tl-bar" style="left:${s*colW+2}px;width:${w}px;background:${rc.color}">${esc(rc.name)} ${fmtK(rc.amount)}</div></div>`; });
+    cards+=`<div class="tl-label" style="margin-top:8px">↓ 每日占用现金(标红=超额度)</div><div class="tl-load-row">`;
+    days.forEach((d,idx)=>{ const v=load[idx],o=v>limit; cards+=`<div class="tl-load ${v>0?(o?'over':'ok'):'ok'}">${v>0?fmtK(v):'·'}</div>`; });
+    cards+=`</div></div></div></div>`;
+  });
+
+  let banner = anyConflict
+    ? `<div class="conflict-banner bad">⚠️ <b>存在账户级资金冲突</b><br>下方标红的账户,其名下多只新股的占用在某时段超过了该账户余额。去「分配」页降低该账户相关新股的投入,或改用其他持有人的账户。</div>`
+    : `<div class="conflict-banner good">✓ <b>无冲突</b><br>每个账户名下的新股占用,都在该账户独立额度内。资金安排可行。</div>`;
+
+  out.innerHTML=banner+cards;
+  if(out.scrollIntoView) out.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function fmtK(n){ if(n>=10000)return (n/10000).toFixed(n%10000===0?0:1)+'万'; if(n>=1000)return Math.round(n/1000)+'k'; return fmt(n); }
+
+/* ============ 分配页:智能账户分配引擎 ============ */
+/* 分配策略:'groupB'=优先乙组, 'spread'=分层平摊 */
+window.allocStrategy='groupB';
+window._currentPlan=null; // 当前分配方案(可手动调整)
+const STRAT_DESC={
+  groupB:'<b style="color:var(--amber)">优先乙组</b>:铺满户头后,剩余预算把账户<b>冲到乙组线</b>(认购额刚过500万)就停,不继续倾斜。让尽量多的账户达到乙组位置即可,剩余资金留作他用。',
+  spread:'<b style="color:var(--teal)">分层平摊</b>:铺满户头后,剩余预算按优先级分层,各账户/各新股尽量平摊,不让高优先级吃光。适合广撒网、雨露均沾。'
+};
+function setStrategy(s){
+  allocStrategy=s;
+  document.getElementById('strat-b').classList.toggle('on',s==='groupB');
+  document.getElementById('strat-spread').classList.toggle('on',s==='spread');
+  const d=document.getElementById('stratDesc'); if(d) d.innerHTML=STRAT_DESC[s];
+}
+/* 偏好设置 */
+function setWanted(id,v){ updIpo(id,'wanted',v); renderPrefList(); }
+function setPriority(id,v){ updIpo(id,'priority',parseInt(v)); renderPrefList(); }
+function setPosition(id,v){ updIpo(id,'position',v); renderPrefList(); }
+
+function renderPrefList(){
+  const a=getIpos().filter(it=>it.name||it.priceHigh);
+  const list=$('prefList');
+  if(!a.length){ list.innerHTML='<div class="empty"><p>「冲突」页还没录入新股</p></div>'; updateBudget(); return; }
+  list.innerHTML=a.map((it,i)=>{
+    const color=PALETTE[i%PALETTE.length];
+    /* 优先级选项:Top1..TopN,N=要打的新股数量(至少3) */
+    const wantedCount=getIpos().filter(x=>x.wanted&&(x.name||x.priceHigh)).length;
+    const maxRank=Math.max(wantedCount,3);
+    const curP=Math.min(Math.max(parseInt(it.priority)||2,1),maxRank); // 钳制,避免旧优先级超出当前选项范围
+    let rankOpts='';
+    for(let r=1;r<=maxRank;r++){ rankOpts+=`<option value="${r}" ${curP===r?'selected':''}>Top${r}</option>`; }
+    return `
+    <div class="alloc-card">
+      <div class="top">
+        <span style="font-weight:600;display:flex;align-items:center;gap:7px"><span class="swatch" style="width:10px;height:10px;border-radius:3px;background:${color}"></span>${esc(it.name||'未命名')}</span>
+        <div class="fund-type" style="width:auto"><button class="${it.wanted?'on':''}" onclick="setWanted(${it.id},true)" style="padding:5px 12px;font-size:11px">打</button><button class="${!it.wanted?'on':''}" onclick="setWanted(${it.id},false)" style="padding:5px 12px;font-size:11px">放弃</button></div>
+      </div>
+      ${it.wanted?`
+      <div class="mini-row" style="margin-top:10px;margin-bottom:0">
+        <div class="field" style="margin-bottom:0;flex:0.9"><div class="tiny-label">优先级</div>
+          <select onchange="setPriority(${it.id},this.value)" style="font-size:13px;padding:8px 9px">${rankOpts}</select></div>
+        <div class="field" style="margin-bottom:0"><div class="tiny-label">仓位</div>
+          <select onchange="setPosition(${it.id},this.value)" style="font-size:13px;padding:8px 9px">
+            <option value="normal" ${it.position==='normal'?'selected':''}>正常</option>
+            <option value="small" ${it.position==='small'?'selected':''}>小仓摸一摸</option>
+          </select></div>
+      </div>
+      <div class="field" style="margin-top:8px;margin-bottom:0"><div class="tiny-label">认购方式</div>
+        <div class="fund-type">
+          <button class="${it.fund==='cash'?'on':''}" onclick="setIpoFundA(${it.id},'cash')" style="padding:8px 4px;font-size:11px">现金</button>
+          <button class="${it.fund==='margin'?'on':''}" onclick="setIpoFundA(${it.id},'margin')" style="padding:8px 4px;font-size:11px">融资${it.fund==='margin'?' '+it.lev+'%':''}</button>
+          <button class="${it.fund==='auto'?'on':''}" onclick="setIpoFundA(${it.id},'auto')" style="padding:8px 4px;font-size:11px">自动</button>
+        </div></div>
+      ${it.fund==='margin'?`<div class="field" style="margin-top:8px;margin-bottom:0"><div class="tiny-label" id="levlbl_${it.id}">融资比例 ${it.lev}%</div>
+        <input type="range" min="50" max="99" value="${it.lev}" oninput="updIpo(${it.id},'lev',parseInt(this.value));document.getElementById('levlbl_${it.id}').textContent='融资比例 '+this.value+'%'"></div>`:''}
+      ${it.fund==='auto'?`<div style="font-size:11px;color:var(--teal);margin-top:6px">自动:优先用现金,现金不够再用融资(融资比例 ${it.lev}%)</div>`:''}
+      `:'<div style="font-size:11px;color:var(--ink-faint);margin-top:8px">已放弃,不参与分配</div>'}
+    </div>`;
+  }).join('');
+  updateBudget();
+}
+function setIpoFundA(id,t){ updIpo(id,'fund',t); renderPrefList(); }
+
+function totalCashAll(){ return allAccounts().reduce((s,a)=>s+(a.amount||0),0); }
+function updateBudget(){
+  const total=totalCashAll();
+  const ratio=($('allocRatio')?parseFloat($('allocRatio').value):100)/100;
+  const budget=Math.round(total*ratio);
+  if($('totalCashAll')) $('totalCashAll').textContent=total?hk(total):'—';
+  if($('allocBudget')) $('allocBudget').textContent=total?hk(budget):'—';
+  return budget;
+}
+
+/* ===== 核心:智能分配引擎 ===== 
+   规则:
+   - 按优先级(1>2>3)处理想打的新股
+   - 每只:仓位 normal=尽量多打, small=只打1手
+   - 候选账户:认购方式匹配(现金看现金额度,融资看融资额度) + 该新股的"同持有人"还没被占用
+   - 一只新股可分配给多个不同持有人的账户(并行打提高中签)
+   - 账户余额被逐步扣减,不能超支
+   - 总预算约束:累计现金投入不超过 budget
+*/
+function runAllocation(){
+  const out=$('allocResult');
+  if(hasListingError()){ out.innerHTML='<div class="conflict-banner bad">⚠️ 有新股的<b>上市日填成了休市日</b>(周末或公众假期)。请回「录入」页修正后再生成分配。</div>'; return; }
+  const budget=updateBudget();
+  let accts=allAccounts().map(a=>({...a, cashLeft:a.amount}));
+  if(!accts.length){ out.innerHTML='<div class="conflict-banner bad">「设置」里还没有账户。先去添加券商和账户。</div>'; return; }
+
+  const wanted=getIpos().filter(it=>it.wanted && (it.name||it.priceHigh) && parseFloat(it.priceHigh)>0 && parseFloat(it.lotSize)>0);
+  if(!wanted.length){ out.innerHTML='<div class="conflict-banner bad">没有"要打"的新股。请在上方把至少一只设为"打",并填好招股价上限和每手。</div>'; return; }
+
+  /* 按优先级排序(数字小=优先级高,Top1先) */
+  wanted.sort((a,b)=>(a.priority||2)-(b.priority||2));
+
+  let budgetLeft=budget;
+
+  /* 甲乙组分界线:认购总额 > 500万港元 = 乙组 */
+  const GROUP_B_LINE = 5000000;
+
+  /* 每只新股的参数预计算(利率/天数改为动态:天数按申购日→出结果日的实际占用,利率按各券商账户设置) */
+  function ipoParams(ipo){
+    const entry=parseFloat(ipo.priceHigh)*parseFloat(ipo.lotSize); // 每手认购全额(上限价)
+    const lev=(parseFloat(ipo.lev)||90)/100;
+    const cashPerLot=entry;                                  // 现金认购每手占用现金
+    return {entry,lev,cashPerLot,finDays:financeDays(ipo)};
+  }
+  /* 某账户对某新股,每手占用现金(根据认购方式;融资利率取该账户所属券商的年利率) */
+  function perLotOccupyFor(ipo,acct,pm){
+    const mode=ipo.fund||'cash';
+    const rate=(acct.rate!=null?acct.rate:5);
+    const intPerLot=pm.entry*pm.lev*(rate/100)/365*pm.finDays; // 融资利息/手(动态利率×实际天数)
+    const marginOwnPerLot=pm.entry*(1-pm.lev)+intPerLot;       // 融资认购每手占用现金(自有+利息)
+    if(mode==='cash') return {occupy:pm.cashPerLot, isMargin:false, rate, intPerLot:0};
+    if(mode==='margin') return {occupy:marginOwnPerLot, isMargin:true, rate, intPerLot};
+    /* auto:现金够全额用现金,否则用融资 */
+    if(acct.cashLeft>=pm.cashPerLot) return {occupy:pm.cashPerLot, isMargin:false, rate, intPerLot:0};
+    return {occupy:marginOwnPerLot, isMargin:true, rate, intPerLot};
+  }
+
+  /* 分配结构:每只新股 -> Map(accId -> {acct, lots, occupyPerLot, isMargin, lev}) */
+  const allocMap=new Map(); // ipo.id -> Map(accId -> rec)
+  wanted.forEach(ipo=>allocMap.set(ipo.id, new Map()));
+
+  /* ===== 阶段一:铺满户头 ===== 
+     按优先级,每只新股让所有不同人头账户各打1手(同持有人只占一个账户) */
+  for(const ipo of wanted){
+    const pm=ipoParams(ipo);
+    const recMap=allocMap.get(ipo.id);
+    const usedHolders=new Set();
+    /* 账户按现金降序,让现金多的优先占住户头 */
+    const candidates=accts.slice().sort((x,y)=>y.cashLeft-x.cashLeft);
+    for(const acct of candidates){
+      if(usedHolders.has(acct.holder)) continue;     // 同持有人对这只只占一个账户
+      const per=perLotOccupyFor(ipo,acct,pm);
+      const {occupy,isMargin}=per;
+      if(acct.cashLeft<occupy) continue;             // 该账户现金不够1手
+      if(budgetLeft<occupy) continue;                // 预算不够1手
+      /* 打1手 */
+      recMap.set(acct.accId,{acct,lots:1,occupyPerLot:occupy,isMargin,lev:isMargin?Math.round(pm.lev*100):0,entry:pm.entry,rate:per.rate,intPerLot:per.intPerLot});
+      acct.cashLeft-=occupy;
+      budgetLeft-=occupy;
+      usedHolders.add(acct.holder);
+    }
+  }
+
+  /* ===== 阶段二:加码(预算有剩余) =====
+     两种策略:
+     - groupB(优先乙组):每只新股按优先级,先把账户冲上乙组(认购额>500万),再均分
+     - spread(分层平摊):各新股的账户轮流加手,雨露均沾,不让高优先级吃光 */
+  const wantedNormal=wanted.filter(ipo=>ipo.position!=='small'); // 小仓不加码
+
+  if(allocStrategy==='groupB'){
+    /* 优先乙组:按优先级逐只处理,每个账户冲到乙组线(认购额刚过500万)就停,
+       不继续把剩余资金全倒进去。让尽量多的账户达到乙组即可。 */
+    for(const ipo of wantedNormal){
+      const pm=ipoParams(ipo);
+      const recMap=allocMap.get(ipo.id);
+      if(recMap.size===0) continue;
+      const subPerLot=pm.entry;
+      const lotsForB=Math.floor(GROUP_B_LINE/subPerLot)+1; // 冲乙组所需手数(认购额刚过500万)
+      const recs=[...recMap.values()].sort((a,b)=>b.acct.cashLeft-a.acct.cashLeft);
+      for(const rec of recs){
+        const acct=rec.acct, occupy=rec.occupyPerLot;
+        const needMore=lotsForB-rec.lots;
+        if(needMore<=0) continue;          // 已达乙组,不再加
+        const costToB=needMore*occupy;
+        if(acct.cashLeft>=costToB && budgetLeft>=costToB){
+          rec.lots+=needMore; acct.cashLeft-=costToB; budgetLeft-=costToB;
+        }
+        /* 资金不够冲乙组的,保持原手数(阶段一铺的1手),不勉强、不吃光 */
+      }
+    }
+  }else{
+    /* 分层平摊:所有想打新股的账户放一起,按优先级排序后轮流加手,
+       一轮给每个账户加1手(高优先级排前面,先加,但每轮只加1手,不独吞) */
+    const allRecs=[];
+    for(const ipo of wantedNormal){
+      const recMap=allocMap.get(ipo.id);
+      recMap.forEach(rec=>allRecs.push({rec, priority:ipo.priority||2}));
+    }
+    /* 按新股优先级升序(Top1先),同优先级保持原顺序 */
+    allRecs.sort((a,b)=>a.priority-b.priority);
+    let again=true;
+    while(again){ again=false;
+      for(const item of allRecs){
+        const rec=item.rec, acct=rec.acct, occupy=rec.occupyPerLot;
+        if(acct.cashLeft>=occupy && budgetLeft>=occupy){
+          rec.lots+=1; acct.cashLeft-=occupy; budgetLeft-=occupy; again=true;
+        }
+      }
+    }
+  }
+
+  /* 把 allocMap 整理成 plan */
+  const plan=[];
+  for(const ipo of wanted){
+    const recMap=allocMap.get(ipo.id);
+    const allocations=[...recMap.values()].map(rec=>({
+      accId:rec.acct.accId, broker:rec.acct.broker, name:rec.acct.name, holder:rec.acct.holder,
+      lots:rec.lots, occupyPerLot:rec.occupyPerLot, entry:rec.entry,
+      accCash:rec.acct.amount, // 该账户总现金(算手动调整上限用)
+      isMargin:rec.isMargin, lev:rec.lev,
+      rate:rec.rate, intPerLot:rec.intPerLot, fee:rec.acct.fee||0 // 融资利率/每手利息/该券商手续费
+    }));
+    plan.push({ipoId:ipo.id, ipoName:ipo.name, priority:ipo.priority, position:ipo.position,
+               color:PALETTE[getIpos().findIndex(x=>x.id===ipo.id)%PALETTE.length], allocations});
+  }
+
+  /* 存为全局,供手动调整后重渲 */
+  _currentPlan={plan, budget};
+  renderAllocResult();
+}
+
+/* 渲染分配方案(可手动调整) */
+function renderAllocResult(){
+  const out=$('allocResult');
+  if(!_currentPlan){ return; }
+  const {plan, budget}=_currentPlan;
+  const GROUP_B_LINE=5000000;
+
+  /* 计算汇总 */
+  let usedBudget=0, totalSubscribe=0;
+  plan.forEach(p=>p.allocations.forEach(al=>{ usedBudget+=al.lots*al.occupyPerLot; totalSubscribe+=al.lots*al.entry; }));
+  const budgetLeft=budget-usedBudget;
+
+  let html='<div class="card"><h2>智能分配方案 <span class="tag">可手动调整</span></h2>';
+  html+=`<div class="result" style="margin-bottom:14px">
+    <div class="line"><span class="k">本次投入本金</span><span class="v">${hk(budget)}</span></div>
+    <div class="line"><span class="k">已用本金</span><span class="v" id="r-usedCap">${hk(usedBudget)}</span></div>
+    <div class="line"><span class="k">剩余本金</span><span class="v ${budgetLeft>=0?'pos':'neg'}" id="r-leftCap">${hk(budgetLeft)}</span></div>
+    <div class="line big"><span class="k">认购总额 <span style="font-size:10px;color:var(--ink-faint);font-weight:400">本金+融资</span></span><span class="v" style="color:var(--amber)" id="r-totalSub">${hk(totalSubscribe)}</span></div>
+  </div>`;
+
+  plan.forEach(p=>{
+    const lotsGot=p.allocations.reduce((s,a)=>s+a.lots,0);
+    html+=`<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${p.allocations.length?'10px':'0'}">
+        <span style="font-weight:600;display:flex;align-items:center;gap:7px"><span class="swatch" style="width:10px;height:10px;border-radius:3px;background:${p.color}"></span>${esc(p.ipoName||'未命名')} <span style="font-size:10px;color:var(--ink-faint)">Top${p.priority}</span></span>
+        <span style="font-size:13px;font-weight:600;color:${lotsGot>0?'var(--teal)':'var(--rose)'}" id="iptot_${p.ipoId}">${lotsGot>0?'共'+lotsGot+'手':'未分配'}</span>
+      </div>`;
+    if(p.allocations.length){
+      html+=p.allocations.map(al=>{
+        const sub=al.lots*al.entry;
+        const occ=al.lots*al.occupyPerLot;
+        const group=sub>GROUP_B_LINE?'B':'A';
+        const maxLots=Math.floor(al.accCash/al.occupyPerLot); // 该账户能打的最高手数
+        return `<div style="padding:7px 0;border-top:1px dashed rgba(255,255,255,.06)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="font-size:12px;color:var(--ink-soft);flex:1">${esc(al.broker)} / ${esc(al.name)} <span style="color:var(--ink-faint)">(${esc(al.holder)})</span> <span id="grp_${p.ipoId}_${al.accId}" style="font-size:9px;padding:1px 5px;border-radius:4px;background:${group==='B'?'rgba(251,191,36,.18)':'rgba(45,212,191,.15)'};color:${group==='B'?'var(--amber)':'var(--teal)'}">${group==='B'?'乙组':'甲组'}</span></span>
+            <div style="display:flex;align-items:center;gap:4px">
+              <input type="number" min="0" max="${maxLots}" value="${al.lots}" inputmode="numeric"
+                oninput="adjustLots(${p.ipoId},${al.accId},this.value)"
+                style="width:58px;padding:6px 7px;font-size:13px;text-align:center;background:var(--bg);border:1px solid var(--teal);border-radius:7px;color:var(--ink)">
+              <span style="font-size:11px;color:var(--ink-faint)">手</span>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--ink-faint);margin-top:4px" id="acctinfo_${p.ipoId}_${al.accId}">
+            ${al.isMargin?`融${al.lev}% · `:''}占现金${fmtK(occ)} · 认购${fmtK(sub)} · 上限${maxLots}手
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      html+=`<div style="font-size:11px;color:var(--rose);margin-top:6px;border-top:1px dashed rgba(255,255,255,.06);padding-top:8px">现金/预算不足或无可用账户,未能分配</div>`;
+    }
+    if(p.allocations.length){
+      const nB=p.allocations.filter(a=>a.lots*a.entry>GROUP_B_LINE).length;
+      html+=`<div style="font-size:11px;color:var(--ink-faint);margin-top:8px" id="ipnote_${p.ipoId}">覆盖 ${p.allocations.length} 个人头账户${nB>0?` · ${nB}个乙组`:' · 均在甲组'}${p.position==='small'?' · 小仓':''}</div>`;
+    }
+    html+='</div>';
+  });
+
+  html+=`<div class="note teal">手数可直接改(上限=该账户现金能打的最多手数)。策略:先铺满人头账户吃"一户一手优先",再按所选搭配加码。同持有人对同一只新股只用一个账户,各账户资金独立。实际下单以你判断为准。</div></div>`;
+
+  out.innerHTML=html;
+  syncPlanToIpos();
+  if(out.scrollIntoView && !_currentPlan._scrolled){ _currentPlan._scrolled=true; out.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
+
+/* 手动调整某账户手数 */
+function adjustLots(ipoId, accId, val){
+  if(!_currentPlan) return;
+  const GROUP_B_LINE=5000000;
+  const p=_currentPlan.plan.find(x=>x.ipoId===ipoId);
+  if(!p) return;
+  const al=p.allocations.find(a=>a.accId===accId);
+  if(!al) return;
+  let lots=parseInt(val)||0;
+  const maxLots=Math.floor(al.accCash/al.occupyPerLot);
+  if(lots<0) lots=0;
+  if(lots>maxLots) lots=maxLots; // 卡上限:不超过该账户能打的最多手数
+  al.lots=lots;
+
+  /* 更新该行的占用/认购/组别显示 */
+  const sub=lots*al.entry, occ=lots*al.occupyPerLot;
+  const group=sub>GROUP_B_LINE?'B':'A';
+  const info=document.getElementById(`acctinfo_${ipoId}_${accId}`);
+  if(info) info.innerHTML=`${al.isMargin?`融${al.lev}% · `:''}占现金${fmtK(occ)} · 认购${fmtK(sub)} · 上限${maxLots}手`;
+  const grp=document.getElementById(`grp_${ipoId}_${accId}`);
+  if(grp){ grp.textContent=group==='B'?'乙组':'甲组'; grp.style.background=group==='B'?'rgba(251,191,36,.18)':'rgba(45,212,191,.15)'; grp.style.color=group==='B'?'var(--amber)':'var(--teal)'; }
+  /* 若输入框被钳制,回写显示值 */
+  const inp=document.querySelector(`input[oninput="adjustLots(${ipoId},${accId},this.value)"]`);
+  if(inp && parseInt(inp.value)!==lots) inp.value=lots;
+
+  /* 更新该新股总手数 */
+  const ipTot=p.allocations.reduce((s,a)=>s+a.lots,0);
+  const totEl=document.getElementById(`iptot_${ipoId}`);
+  if(totEl){ totEl.textContent=ipTot>0?'共'+ipTot+'手':'未分配'; totEl.style.color=ipTot>0?'var(--teal)':'var(--rose)'; }
+  const nB=p.allocations.filter(a=>a.lots*a.entry>GROUP_B_LINE).length;
+  const noteEl=document.getElementById(`ipnote_${ipoId}`);
+  if(noteEl) noteEl.innerHTML=`覆盖 ${p.allocations.length} 个人头账户${nB>0?` · ${nB}个乙组`:' · 均在甲组'}${p.position==='small'?' · 小仓':''}`;
+
+  /* 更新顶部汇总 */
+  let usedBudget=0, totalSubscribe=0;
+  _currentPlan.plan.forEach(pp=>pp.allocations.forEach(a=>{ usedBudget+=a.lots*a.occupyPerLot; totalSubscribe+=a.lots*a.entry; }));
+  const budgetLeft=_currentPlan.budget-usedBudget;
+  if($('r-usedCap')) $('r-usedCap').textContent=hk(usedBudget);
+  if($('r-leftCap')){ $('r-leftCap').textContent=hk(budgetLeft); $('r-leftCap').className='v '+(budgetLeft>=0?'pos':'neg'); }
+  if($('r-totalSub')) $('r-totalSub').textContent=hk(totalSubscribe);
+
+  syncPlanToIpos();
+}
+
+/* 把当前方案写回新股(供冲突/计算/台账用) */
+function syncPlanToIpos(){
+  if(!_currentPlan) return;
+  const GROUP_B_LINE=5000000;
+  const ipos=getIpos();
+  _currentPlan.plan.forEach(p=>{
+    const it=ipos.find(x=>x.id===p.ipoId);
+    if(it){
+      const allocs=p.allocations.filter(a=>a.lots>0).map(a=>({
+        broker:a.broker, name:a.name, holder:a.holder, lots:a.lots,
+        cost:a.lots*a.occupyPerLot, subscribe:a.lots*a.entry,
+        isMargin:a.isMargin, lev:a.lev, rate:a.rate,
+        interest:a.isMargin?(a.lots*(a.intPerLot||0)):0,   // 该账户融资利息合计
+        fee:a.isMargin?(a.fee||0):0,                        // 融资手续费(每次申购一笔)
+        group:(a.lots*a.entry>GROUP_B_LINE)?'B':'A'
+      }));
+      it.invest=allocs.reduce((s,a)=>s+a.cost,0);
+      it._allocations=allocs;
+      it._allocLots=allocs.reduce((s,a)=>s+a.lots,0);
+    }
+  });
+  ipos.forEach(it=>{ if(!_currentPlan.plan.find(p=>p.ipoId===it.id)){ it.invest=0; it._allocations=[]; it._allocLots=0; } });
+  saveIpos(ipos);
+}
+$('allocRatio') && $('allocRatio').addEventListener('input', e=>{ $('allocRatioVal').textContent=e.target.value+'%'; updateBudget(); });
+
+/* ============ 计算页:每只手数+成本 ============ */
+function renderCalcList(){
+  const a=getIpos().filter(it=>(it.name||it.priceHigh) && it._allocations && it._allocations.length);
+  const list=$('calcList');
+  if(!a.length){
+    list.innerHTML='<div class="empty"><div class="ic">🧮</div><p>还没有分配方案<br>去「分配」页生成智能分配方案</p></div>';
+    $('calcSummaryCard').style.display='none';
+    return;
+  }
+  list.innerHTML=a.map((it,i)=>{
+    const idx=getIpos().findIndex(x=>x.id===it.id);
+    const color=PALETTE[idx%PALETTE.length];
+    const allocs=it._allocations;
+    const totalLots=allocs.reduce((s,al)=>s+al.lots,0);
+    const totalCost=allocs.reduce((s,al)=>s+al.cost,0);
+    const entry=parseFloat(it.priceHigh)*parseFloat(it.lotSize);
+    return `
+    <div class="result" style="margin-bottom:12px">
+      <div class="line" style="border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:6px">
+        <span style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:7px"><span class="swatch" style="width:10px;height:10px;border-radius:3px;background:${color}"></span>${esc(it.name||'未命名')}</span>
+        <span style="font-size:12px;color:var(--ink-soft)">${(function(){const hasM=allocs.some(a=>a.isMargin),hasC=allocs.some(a=>!a.isMargin);if(it.fund==='auto')return hasM&&hasC?'现金+融资':(hasM?'融资'+it.lev+'%':'现金');return it.fund==='margin'?'融资'+it.lev+'%':'现金';})()} · 入场费${fmtK(entry)}</span>
+      </div>
+      ${allocs.map(al=>`<div class="line"><span class="k">${esc(al.broker)}/${esc(al.name)} <span style="color:var(--ink-faint);font-size:11px">(${esc(al.holder)})</span></span><span class="v"><b style="color:var(--teal)">${al.lots}手</b> · ${fmtK(al.cost)}</span></div>`).join('')}
+      <div class="line big"><span class="k">合计 ${totalLots}手</span><span class="v">${hk(totalCost)}</span></div>
+    </div>`;
+  }).join('');
+
+  /* 汇总 */
+  let totLots=0,totNeed=0,totCash=0,totMargin=0,totFee=0;
+  a.forEach(it=>{
+    it._allocations.forEach(al=>{ totLots+=al.lots; totNeed+=al.cost; totFee+=(al.fee||0); if(al.isMargin)totMargin+=al.cost; else totCash+=al.cost; });
+  });
+  $('calcSummaryCard').style.display='block';
+  $('calcSummary').innerHTML=`
+    <div class="line"><span class="k">参与新股</span><span class="v">${a.length} 只</span></div>
+    <div class="line"><span class="k">合计认购</span><span class="v">${totLots} 手</span></div>
+    <div class="line"><span class="k">现金占用</span><span class="v">${hk(totCash)}</span></div>
+    <div class="line"><span class="k">融资占用 <span style="font-size:10px;color:var(--ink-faint);font-weight:400">含利息</span></span><span class="v">${hk(totMargin)}</span></div>
+    ${totFee>0?`<div class="line"><span class="k">融资手续费</span><span class="v">${hk(totFee)}</span></div>`:''}
+    <div class="line big"><span class="k">合计需准备</span><span class="v">${hk(totNeed+totFee)}</span></div>`;
+}
+
+/* 把已分配的新股批量加入台账(每个账户一条记录) */
+function commitBatch(){
+  const a=getIpos().filter(it=>(it.name||it.priceHigh) && it._allocations && it._allocations.length);
+  if(!a.length){ alert('没有分配方案,请先去分配页生成'); return; }
+  let recordCount=0;
+  a.forEach(it=>it._allocations.forEach(()=>recordCount++));
+  if(!confirm(`将 ${a.length} 只新股的 ${recordCount} 条账户申购记录加入台账?`)) return;
+  const l=getLedger();
+  a.forEach(it=>{
+    const entry=parseFloat(it.priceHigh)*parseFloat(it.lotSize);
+    const pLow=parseFloat(it.priceLow)||parseFloat(it.priceHigh);
+    const fixedPrice=(pLow===parseFloat(it.priceHigh)); // 上下限相同=固定价
+    it._allocations.forEach(al=>{
+      /* 融资利息与手续费直接沿用分配引擎算好的值(利率按券商、天数按实际占用) */
+      const interest = al.isMargin ? (al.interest||0) : 0;
+      const fee = al.isMargin ? (al.fee||0) : 0;
+      l.unshift({
+        id:Date.now()+Math.floor(Math.random()*1000),
+        name:it.name||'未命名新股', code:it.code||'',
+        sponsor:it.sponsor||'', greenShoe:it.greenShoe||'none', greenShoeWho:it.greenShoeWho||'',
+        priceHigh:parseFloat(it.priceHigh), priceLow:pLow, fixedPrice,
+        lotSize:parseFloat(it.lotSize), entry,
+        applied:true, appliedLots:al.lots, fund:it.fund, lev:it.lev,
+        isMargin:al.isMargin, subscribe:al.subscribe, occupyCash:al.cost, interest, fee,
+        account:al.broker+'/'+al.name, holder:al.holder,
+        date:new Date().toLocaleDateString('zh-CN'),
+        resultOut:false, wonShares:0, wonAccount:al.broker+'/'+al.name,
+        finalPrice:fixedPrice?parseFloat(it.priceHigh):null, // 固定价直接用,区间留空待回填
+        darkClose:null, day1Close:null, sellPrice:null
+      });
+    });
+  });
+  saveLedger(l);
+  alert(`已加入 ${recordCount} 条申购记录到台账 ✓`);
+}
+
+/* ============ 台账页 ============ */
+function getLedger(){ return lsGet(LS_LEDGER); }
+function saveLedger(l){ lsSet(LS_LEDGER,l); }
+function delLedger(id){ if(!confirm('删除这条台账记录?'))return; saveLedger(getLedger().filter(x=>x.id!==id)); renderLedger(); }
+function clearAllLedger(){ if(!confirm('清空全部台账?'))return; saveLedger([]); renderLedger(); }
+function toggleApplied(id){ const l=getLedger(); const it=l.find(x=>x.id===id); if(it){it.applied=!it.applied; if(!it.applied)it.appliedLots=0; saveLedger(l); renderLedger();} }
+let openWinForm=null;
+function showWinForm(id){ openWinForm=openWinForm===id?null:id; renderLedger(); }
+function saveWin(id){
+  const shares=parseFloat($('winShares_'+id).value)||0;
+  const acct=$('winAcct_'+id).value;
+  const l=getLedger(); const it=l.find(x=>x.id===id);
+  if(it){
+    it.resultOut=true; it.wonShares=shares; it.wonAccount=acct;
+    /* 价格回填 */
+    if(!it.fixedPrice){ const fp=$('finalP_'+id); it.finalPrice=fp&&fp.value!==''?parseFloat(fp.value):null; }
+    const dc=$('darkC_'+id); it.darkClose=dc&&dc.value!==''?parseFloat(dc.value):null;
+    const d1=$('day1C_'+id); it.day1Close=d1&&d1.value!==''?parseFloat(d1.value):null;
+    const sp=$('sellP_'+id); it.sellPrice=sp&&sp.value!==''?parseFloat(sp.value):null;
+    saveLedger(l); openWinForm=null; renderLedger();
+  }
+}
+function markNotWon(id){ const l=getLedger(); const it=l.find(x=>x.id===id); if(it){it.resultOut=true; it.wonShares=0; it.wonAccount=''; saveLedger(l); openWinForm=null; renderLedger();} }
+
+/* 计算某条台账记录的盈亏(按卖出价) */
+function ledgerPnL(it){
+  if(!it.resultOut || !(it.wonShares>0)) return null;
+  const finalP = it.finalPrice!=null ? it.finalPrice : (it.fixedPrice?it.priceHigh:null);
+  if(finalP==null) return {needFinal:true}; // 区间定价但还没回填最终招股价
+  if(it.sellPrice==null) return {needSell:true, finalP}; // 还没填卖出价
+  const gross = it.wonShares * (it.sellPrice - finalP);     // 毛盈亏
+  const net = gross - (it.interest||0) - (it.fee||0);        // 扣融资利息与手续费
+  return {gross, net, finalP, interest:it.interest||0, fee:it.fee||0};
+}
+function renderLedger(){
+  const l=getLedger();
+  const applied=l.filter(x=>x.applied);
+  const won=l.filter(x=>x.resultOut&&x.wonShares>0);
+  const awaiting=l.filter(x=>x.applied&&!x.resultOut);
+  $('s-total').textContent=l.length;
+  $('s-applied').textContent=applied.length;
+  $('s-won').textContent=won.length;
+  $('s-await').textContent=awaiting.length;
+  $('clearLedger').style.display=l.length?'block':'none';
+  /* 累计收益:统计已填卖出价的记录 */
+  let pCount=0, pGross=0, pNet=0;
+  l.forEach(it=>{ const pnl=ledgerPnL(it); if(pnl&&!pnl.needFinal&&!pnl.needSell){ pCount++; pGross+=pnl.gross; pNet+=pnl.net; } });
+  if(pCount>0){
+    $('pnlCard').style.display='block';
+    $('p-count').textContent=pCount+' 笔';
+    $('p-gross').textContent=(pGross>=0?'+':'')+hk(pGross);
+    $('p-gross').className='v '+(pGross>=0?'pos':'neg');
+    $('p-net').textContent=(pNet>=0?'+':'')+hk(pNet);
+    $('p-net').className='v '+(pNet>=0?'pos':'neg');
+  } else { $('pnlCard').style.display='none'; }
+  const list=$('ledgerList');
+  if(!l.length){ list.innerHTML='<div class="empty"><div class="ic">📋</div><p>台账还是空的<br>在「计算」页确认投入后,点"加入台账"</p></div>'; return; }
+  const accts=allAccounts();
+  list.innerHTML=l.map(it=>{
+    let pill,cls;
+    if(!it.applied){ pill='<span class="status-pill pending">未申购</span>'; cls='pending'; }
+    else if(!it.resultOut){ pill='<span class="status-pill applied">已申购·待结果</span>'; cls='applied'; }
+    else if(it.wonShares>0){ pill='<span class="status-pill won">已中签</span>'; cls='applied'; }
+    else { pill='<span class="status-pill lost">未中签</span>'; cls='applied'; }
+    let resultRow='';
+    if(it.applied&&it.resultOut){
+      if(it.wonShares>0){
+        const lw=it.lotSize?Math.round(it.wonShares/it.lotSize*10)/10:'?';
+        resultRow=`<div class="ledger-meta" style="color:var(--green)">中签 <b style="color:var(--green)">${fmt(it.wonShares)}</b> 股(约${lw}手)${it.wonAccount?` · 账户 <b style="color:var(--green)">${esc(it.wonAccount)}</b>`:''}</div>`;
+        /* 价格信息行 */
+        const priceparts=[];
+        const finalP = it.finalPrice!=null?it.finalPrice:(it.fixedPrice?it.priceHigh:null);
+        if(finalP!=null) priceparts.push(`招股价 ${finalP}`);
+        if(it.darkClose!=null) priceparts.push(`暗盘 ${it.darkClose}`);
+        if(it.day1Close!=null) priceparts.push(`首日 ${it.day1Close}`);
+        if(it.sellPrice!=null) priceparts.push(`<b style="color:var(--ink)">卖出 ${it.sellPrice}</b>`);
+        if(priceparts.length) resultRow+=`<div class="ledger-meta" style="font-size:11px;color:var(--ink-soft)">${priceparts.join(' · ')}</div>`;
+        /* 盈亏行 */
+        const pnl=ledgerPnL(it);
+        if(pnl){
+          if(pnl.needFinal) resultRow+=`<div class="ledger-meta" style="font-size:11px;color:var(--amber)">↑ 区间定价,回填最终招股价后算盈亏</div>`;
+          else if(pnl.needSell) resultRow+=`<div class="ledger-meta" style="font-size:11px;color:var(--ink-faint)">↑ 填卖出价后算盈亏</div>`;
+          else {
+            const gc=pnl.gross>=0?'var(--green)':'var(--rose)';
+            const nc=pnl.net>=0?'var(--green)':'var(--rose)';
+            resultRow+=`<div class="ledger-meta" style="font-size:12px">毛盈亏 <b style="color:${gc}">${pnl.gross>=0?'+':''}${fmt(pnl.gross)}</b>${(it.isMargin||pnl.fee)?` · 净盈亏 <b style="color:${nc}">${pnl.net>=0?'+':''}${fmt(pnl.net)}</b> <span style="color:var(--ink-faint)">(息${fmt(pnl.interest)}${pnl.fee?`+费${fmt(pnl.fee)}`:''})</span>`:''}</div>`;
+          }
+        }
+      }
+      else { resultRow=`<div class="ledger-meta" style="color:var(--rose)">未中签</div>`; }
+    }
+    let winForm='';
+    if(openWinForm===it.id){
+      const opts=accts.length?accts.map(a=>`<option value="${esc(a.broker+'/'+a.name)}" ${it.wonAccount===(a.broker+'/'+a.name)?'selected':''}>${esc(a.broker+' / '+a.name)}</option>`).join(''):'<option value="">(设置里还没账户)</option>';
+      winForm=`<div class="win-form">
+        <div class="tiny-label">结果出来了?填写中签与价格</div>
+        <div class="mini-row">
+          <div class="field" style="margin-bottom:8px"><div class="tiny-label">中签股数</div>
+            <input id="winShares_${it.id}" type="number" value="${it.wonShares||''}" placeholder="如 100" inputmode="numeric" style="font-size:13px;padding:8px 9px"></div>
+          <div class="field" style="margin-bottom:8px"><div class="tiny-label">在哪个账户中的</div>
+            <select id="winAcct_${it.id}" style="font-size:13px;padding:8px 9px">${opts}</select></div>
+        </div>
+        ${!it.fixedPrice?`<div class="mini-row"><div class="field" style="margin-bottom:8px"><div class="tiny-label">最终招股价 <span style="color:var(--amber)">区间定价需填</span></div>
+            <input id="finalP_${it.id}" type="number" value="${it.finalPrice!=null?it.finalPrice:''}" placeholder="招股区间 ${it.priceLow}~${it.priceHigh}" inputmode="decimal" style="font-size:13px;padding:8px 9px"></div></div>`:`<div style="font-size:11px;color:var(--ink-faint);margin-bottom:8px">固定价 ${it.priceHigh},无需填最终招股价</div>`}
+        <div class="mini-row">
+          <div class="field" style="margin-bottom:8px"><div class="tiny-label">暗盘收盘价 <span style="color:var(--ink-faint)">选填</span></div>
+            <input id="darkC_${it.id}" type="number" value="${it.darkClose!=null?it.darkClose:''}" placeholder="参考" inputmode="decimal" style="font-size:13px;padding:8px 9px"></div>
+          <div class="field" style="margin-bottom:8px"><div class="tiny-label">首日收盘价 <span style="color:var(--ink-faint)">选填</span></div>
+            <input id="day1C_${it.id}" type="number" value="${it.day1Close!=null?it.day1Close:''}" placeholder="参考" inputmode="decimal" style="font-size:13px;padding:8px 9px"></div>
+        </div>
+        <div class="field" style="margin-bottom:8px"><div class="tiny-label">我的卖出价 <span style="color:var(--teal)">填了才算盈亏</span></div>
+          <input id="sellP_${it.id}" type="number" value="${it.sellPrice!=null?it.sellPrice:''}" placeholder="实际卖出价,没卖就留空" inputmode="decimal" style="font-size:13px;padding:8px 9px"></div>
+        <div class="ledger-actions">
+          <button class="mini-btn go" onclick="saveWin(${it.id})">保存</button>
+          <button class="mini-btn" onclick="markNotWon(${it.id})">这只没中</button>
+        </div></div>`;
+    }
+    let actions='<div class="ledger-actions">';
+    if(it.applied&&!it.resultOut){ actions+=`<button class="mini-btn go" onclick="showWinForm(${it.id})">📝 回填中签结果</button>`; }
+    else if(it.resultOut){ actions+=`<button class="mini-btn" onclick="showWinForm(${it.id})">修改结果</button>`; }
+    actions+=`<button class="mini-btn" onclick="toggleApplied(${it.id})">${it.applied?'标记未申购':'标记已申购'}</button>`;
+    actions+=`<button class="mini-btn" onclick="delLedger(${it.id})" style="color:var(--rose)">删除</button></div>`;
+    return `
+    <div class="ledger-item ${cls}">
+      <div class="top"><div><span class="nm">${esc(it.name)}</span>${it.code?`<span class="code">${esc(it.code)}</span>`:''}</div>${pill}</div>
+      <div class="ledger-meta">
+        ${it.applied?`<span>申购 <b>${it.appliedLots}</b> 手</span>`:'<span>未申购</span>'}
+        <span>入场费 <b>${fmt(it.entry)}</b></span>
+        ${it.fund==='margin'?`<span>融资 <b>${it.lev}%</b></span>`:'<span>现金</span>'}
+        ${it.sponsor?`<span>保荐 <b>${esc(it.sponsor)}</b></span>`:''}
+        ${it.greenShoe==='yes'?`<span style="color:var(--amber)">绿鞋${it.greenShoeWho?` <b style="color:var(--amber)">${esc(it.greenShoeWho)}</b>`:''}</span>`:''}
+        <span style="color:var(--ink-faint)">${it.date||''}</span>
+      </div>
+      ${resultRow}${actions}${winForm}
+    </div>`;
+  }).join('');
+}
+
+/* ============ 设置页:券商 + 账户 ============ */
+function defaultBrokers(){
+  return [
+    {id:1,name:'富途',cashOffset:0,cashTime:'12:00',marginOffset:0,marginTime:'10:00',rate:5.0,fee:100,accounts:[]},
+    {id:2,name:'致富',cashOffset:0,cashTime:'09:00',marginOffset:0,marginTime:'08:45',rate:5.5,fee:100,accounts:[]},
+    {id:3,name:'复星',cashOffset:0,cashTime:'09:00',marginOffset:0,marginTime:'07:30',rate:4.8,fee:100,accounts:[]}
+  ];
+}
+function getBrokers(){ let b=lsGetObj(LS_BROKERS,null); if(!Array.isArray(b)){ b=defaultBrokers(); lsSet(LS_BROKERS,b); } return b; }
+function saveBrokers(b){ lsSet(LS_BROKERS,b); }
+function addBroker(){ const b=getBrokers(); b.push({id:Date.now(),name:'新券商',cashOffset:-1,cashTime:'16:00',marginOffset:-1,marginTime:'16:00',rate:5.0,fee:100,accounts:[]}); saveBrokers(b); renderBrokers(); renderAcctSummary(); }
+function delBroker(id){ if(!confirm('删除这个券商及其下所有账户?'))return; saveBrokers(getBrokers().filter(x=>x.id!==id)); renderBrokers(); renderAcctSummary(); }
+function updBroker(id,k,v){ const b=getBrokers(); const it=b.find(x=>x.id===id); if(it){it[k]=v; saveBrokers(b);} }
+function addAcct(bid){ const b=getBrokers(); const it=b.find(x=>x.id===bid); if(it){ const holder=it.accounts.length===0?'本人':''; it.accounts.push({id:Date.now(),holder,amount:0}); saveBrokers(b); renderBrokers(); renderAcctSummary();} }
+function delAcct(bid,aid){ const b=getBrokers(); const it=b.find(x=>x.id===bid); if(it){it.accounts=it.accounts.filter(a=>a.id!==aid); saveBrokers(b); renderBrokers(); renderAcctSummary();} }
+function updAcct(bid,aid,k,v){ const b=getBrokers(); const it=b.find(x=>x.id===bid); if(it){const a=it.accounts.find(x=>x.id===aid); if(a){a[k]=v; saveBrokers(b); if(k==='amount')renderAcctSummary();}} }
+function offsetOptions(cur){ const o=[[0,'T当天(招股最后一天)'],[-1,'T前1工作日'],[-2,'T前2工作日']]; return o.map(([v,l])=>`<option value="${v}" ${parseInt(cur)===v?'selected':''}>${l}</option>`).join(''); }
+function renderBrokers(){
+  const b=getBrokers();
+  const list=$('brokerList');
+  if(!b.length){ list.innerHTML='<div class="empty"><p>还没有券商,点下方添加</p></div>'; return; }
+  list.innerHTML=b.map(it=>`
+    <div class="broker-block">
+      <div class="bhead">
+        <input type="text" value="${esc(it.name)}" oninput="updBroker(${it.id},'name',this.value)" style="font-size:15px;font-weight:600;color:var(--teal);width:140px;padding:6px 9px">
+        <button class="del" style="color:var(--rose)" onclick="delBroker(${it.id})">删除券商</button>
+      </div>
+      <div class="tiny-label">现金认购截止</div>
+      <div class="mini-row" style="margin-bottom:8px">
+        <div class="field" style="margin-bottom:0"><select onchange="updBroker(${it.id},'cashOffset',parseInt(this.value))" style="font-size:13px;padding:8px 9px">${offsetOptions(it.cashOffset)}</select></div>
+        <div class="field" style="margin-bottom:0;flex:0 0 90px"><input type="time" value="${it.cashTime}" oninput="updBroker(${it.id},'cashTime',this.value)" style="font-size:13px;padding:8px 9px"></div>
+      </div>
+      <div class="tiny-label">融资认购截止</div>
+      <div class="mini-row" style="margin-bottom:8px">
+        <div class="field" style="margin-bottom:0"><select onchange="updBroker(${it.id},'marginOffset',parseInt(this.value))" style="font-size:13px;padding:8px 9px">${offsetOptions(it.marginOffset)}</select></div>
+        <div class="field" style="margin-bottom:0;flex:0 0 90px"><input type="time" value="${it.marginTime}" oninput="updBroker(${it.id},'marginTime',this.value)" style="font-size:13px;padding:8px 9px"></div>
+      </div>
+      <div class="mini-row" style="margin-bottom:10px">
+        <div class="field" style="margin-bottom:0"><div class="tiny-label">融资年利率 %</div><input type="number" value="${it.rate}" step="0.1" oninput="updBroker(${it.id},'rate',parseFloat(this.value)||0)" style="font-size:13px;padding:8px 9px"></div>
+        <div class="field" style="margin-bottom:0"><div class="tiny-label">融资手续费</div><input type="number" value="${it.fee}" step="1" oninput="updBroker(${it.id},'fee',parseFloat(this.value)||0)" style="font-size:13px;padding:8px 9px"></div>
+      </div>
+      <div class="tiny-label" style="margin-bottom:6px">该券商下的账户 <span style="color:var(--ink-faint)">每个账户一个持有人,同券商持有人不能重复</span></div>
+      ${it.accounts.map(a=>{
+        /* 检测同券商内持有人是否重复 */
+        const dup=it.accounts.filter(x=>(x.holder||'').trim()&&(x.holder||'').trim()===(a.holder||'').trim()).length>1;
+        return `<div style="background:var(--bg);border:1px solid ${dup?'var(--rose)':'var(--line)'};border-radius:9px;padding:9px;margin-bottom:8px">
+        <div class="mini-row" style="margin-bottom:${dup?'4px':'0'}">
+          <div class="field" style="margin-bottom:0;flex:1.2"><div class="tiny-label">持有人</div>
+            <input type="text" value="${esc(a.holder||'')}" placeholder="本人/配偶/父亲" oninput="updAcct(${it.id},${a.id},'holder',this.value)" style="font-size:12px;padding:7px 9px;${dup?'border-color:var(--rose)':''}"></div>
+          <div class="field" style="margin-bottom:0;flex:1"><div class="tiny-label">现金额度</div>
+            <input type="number" value="${a.amount||''}" placeholder="港元" inputmode="decimal" oninput="updAcct(${it.id},${a.id},'amount',parseFloat(this.value)||0)" style="font-size:12px;padding:7px 9px"></div>
+          <button class="rm" onclick="delAcct(${it.id},${a.id})" style="align-self:flex-end;margin-bottom:2px">×</button>
+        </div>
+        ${dup?`<div style="font-size:10px;color:var(--rose)">⚠️ 持有人"${esc(a.holder)}"在本券商重复了,同一人在同券商只会有一个户</div>`:''}
+      </div>`;}).join('')}
+      <button class="add-acct" onclick="addAcct(${it.id})">+ 添加账户</button>
+    </div>`).join('');
+}
+function allAccounts(){ const b=getBrokers(); let arr=[]; b.forEach(br=>br.accounts.forEach(a=>{ const holder=(a.holder||'').trim()||'本人'; arr.push({brokerId:br.id, accId:a.id, broker:br.name, name:holder, holder:holder, amount:a.amount||0, rate:br.rate, fee:br.fee}); })); return arr; }
+function renderAcctSummary(){
+  const accts=allAccounts();
+  $('sum-acct').textContent=accts.length;
+  /* 按持有人分组显示(不再合并成一个总额) */
+  const byHolder={};
+  accts.forEach(a=>{ if(!byHolder[a.holder])byHolder[a.holder]={cash:0,n:0}; byHolder[a.holder].cash+=a.amount; byHolder[a.holder].n++; });
+  const box=$('acctBreakdown');
+  if(!box) return;
+  if(!accts.length){ box.innerHTML='<div class="empty" style="padding:20px"><p>还没有账户</p></div>'; return; }
+  box.innerHTML=Object.keys(byHolder).map(h=>{
+    const d=byHolder[h];
+    return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.06)">
+      <span style="font-size:13px;color:var(--ink)">${esc(h)} <span style="color:var(--ink-faint);font-size:11px">${d.n}户</span></span>
+      <span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums">现金${fmtK(d.cash)}</span>
+    </div>`;
+  }).join('');
+}
+function resetAll(){ if(!confirm('确认清空所有数据?券商、账户、台账、新股全部删除,不可恢复。'))return; [LS_LEDGER,LS_BROKERS,LS_IPOS,LS_AI].forEach(k=>{try{localStorage.removeItem(k);}catch(e){delete _mem[k];}}); renderBrokers(); renderAcctSummary(); refreshAiUI(); alert('已清空'); }
+
+/* ============ AI 智能解析 ============ */
+const LS_AI='hkipo_ai_endpoint';
+const DEFAULT_AI_ENDPOINT='https://winter-wind-be5a12138.qingyun56307.workers.dev'; // 内置后端,别人打开即用
+function getAiEndpoint(){ const saved=lsGetObj(LS_AI,'')||''; return saved||DEFAULT_AI_ENDPOINT; }
+function saveAiEndpoint(v){ lsSet(LS_AI,(v||'').trim()); refreshAiUI(); }
+function refreshAiUI(){
+  const ep=getAiEndpoint();
+  const on=!!ep;
+  const ec=$('aiEntryCard'); if(ec) ec.style.display=on?'block':'none';
+  const ac=$('aiAllocCard'); if(ac) ac.style.display=on?'block':'none';
+  const saved=lsGetObj(LS_AI,'')||'';
+  const inp=$('aiEndpoint'); if(inp&&document.activeElement!==inp) inp.value=saved; // 只显示用户自填的,不覆盖默认
+  const st=$('aiStatus');
+  if(st){
+    if(saved) st.innerHTML='<span style="color:var(--teal)">✓ 已配置自定义后端</span>';
+    else st.innerHTML='<span style="color:var(--teal)">✓ 已内置后端,AI 解析可直接用</span>(如要用自己的额度,可在上方填你的地址)';
+  }
+}
+
+/* 调用后端(后端转发到智谱),返回解析后的 JSON 字符串 */
+async function callAI(task, text){
+  const ep=getAiEndpoint();
+  if(!ep) throw new Error('未配置 AI 后端地址');
+  const today=new Date().toISOString().slice(0,10); // 当前日期 YYYY-MM-DD,给AI推算年份
+  const resp=await fetch(ep,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({task, text, today})
+  });
+  if(!resp.ok){ throw new Error('后端返回错误 '+resp.status); }
+  const data=await resp.json();
+  /* 后端应返回 {content:"..."},content 是 AI 输出的 JSON 文本 */
+  let raw=data.content||data.result||'';
+  raw=String(raw).replace(/```json|```/g,'').trim();
+  return JSON.parse(raw);
+}
+
+/* —— 招股要素解析 —— */
+async function aiParseEntry(){
+  const text=$('aiEntryText').value.trim();
+  if(!text){ alert('先粘贴招股描述'); return; }
+  const btn=$('aiEntryBtn'); btn.textContent='解析中...'; btn.disabled=true;
+  try{
+    const arr=await callAI('entry', text); // 期望返回新股数组
+    const list=Array.isArray(arr)?arr:(arr.ipos||[arr]);
+    showEntryConfirm(list);
+  }catch(e){ alert('解析失败:'+e.message); }
+  finally{ btn.textContent='解析并预览'; btn.disabled=false; }
+}
+function showEntryConfirm(list){
+  if(!list.length){ alert('没解析出新股'); return; }
+  const rows=list.map((it,i)=>`
+    <div style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px;line-height:1.9">
+      <b style="color:var(--teal)">${esc(it.name||'(无名称)')}</b> ${it.code?`<span style="color:var(--ink-faint)">${esc(it.code)}</span>`:''}<br>
+      招股价 ${it.priceLow||'?'}~${it.priceHigh||'?'} · 每手 ${it.lotSize||'?'}股 · 上市 ${it.listing||'?'}<br>
+      ${it.sponsor?`保荐 ${esc(it.sponsor)} · `:''}申购日 ${it.applyDate||'(未提供,需补)'}
+    </div>`).join('');
+  showModal('确认招股要素', `<p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">AI 提取了 ${list.length} 只新股,核对无误后填入(空缺项稍后手动补)。AI 可能有误,务必核对数字。</p>${rows}`,
+    ()=>applyEntry(list));
+}
+function applyEntry(list){
+  const a=getIpos().filter(it=>it.name||it.priceHigh); // 保留已有非空的
+  list.forEach(it=>{
+    const ipo=blankIpo();
+    ipo.name=it.name||''; ipo.code=it.code||''; ipo.sponsor=it.sponsor||'';
+    ipo.priceLow=it.priceLow!=null?String(it.priceLow):''; ipo.priceHigh=it.priceHigh!=null?String(it.priceHigh):'';
+    ipo.lotSize=it.lotSize!=null?String(it.lotSize):''; ipo.listing=it.listing||''; ipo.applyDate=it.applyDate||'';
+    a.push(ipo);
+  });
+  saveIpos(a.length?a:[blankIpo()]);
+  closeModal(); renderIpoList();
+  $('aiEntryText').value='';
+}
+
+/* —— 分配偏好解析 —— */
+async function aiParseAlloc(){
+  const text=$('aiAllocText').value.trim();
+  if(!text){ alert('先输入分配偏好'); return; }
+  const ipos=getIpos().filter(it=>it.name||it.priceHigh);
+  if(!ipos.length){ alert('请先在录入页填新股'); return; }
+  const btn=$('aiAllocBtn'); btn.textContent='解析中...'; btn.disabled=true;
+  try{
+    /* 把现有新股名单一起给 AI,让它对应 */
+    const names=ipos.map(it=>it.name||it.code||('新股'+it.id));
+    const arr=await callAI('alloc', JSON.stringify({preference:text, ipos:names}));
+    const list=Array.isArray(arr)?arr:(arr.result||[]);
+    showAllocConfirm(list, ipos);
+  }catch(e){ alert('解析失败:'+e.message); }
+  finally{ btn.textContent='解析并预览'; btn.disabled=false; }
+}
+function showAllocConfirm(list, ipos){
+  const posMap={normal:'正常',small:'小仓摸一摸'};
+  const fundMap={cash:'现金',margin:'融资',auto:'自动'};
+  const rows=list.map(r=>{
+    return `<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px">
+      <b>${esc(r.name||'?')}</b> — ${r.wanted===false?'<span style="color:var(--rose)">放弃</span>':`打 · 优先级Top${r.priority||2} · ${posMap[r.position]||'正常'} · ${fundMap[r.fund]||'现金'}`}
+    </div>`;}).join('');
+  showModal('确认分配偏好', `<p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">AI 解析结果,核对后应用到分配页。</p>${rows}`,
+    ()=>applyAlloc(list, ipos));
+}
+function applyAlloc(list, ipos){
+  const all=getIpos();
+  list.forEach(r=>{
+    /* 按名称匹配新股 */
+    const it=all.find(x=>(x.name||x.code||('新股'+x.id))===r.name || x.name===r.name);
+    if(it){
+      if(r.wanted!==undefined) it.wanted=r.wanted;
+      if(r.priority!=null) it.priority=parseInt(r.priority)||2;
+      if(r.position) it.position=r.position;
+      if(r.fund) it.fund=r.fund;
+    }
+  });
+  saveIpos(all);
+  closeModal(); renderPrefList(); updateBudget();
+  $('aiAllocText').value='';
+}
+
+/* —— 通用确认弹窗 —— */
+let _modalConfirm=null;
+function showModal(title, bodyHtml, onConfirm){
+  _modalConfirm=onConfirm;
+  let m=$('aiModal');
+  if(!m){
+    m=document.createElement('div');
+    m.id='aiModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:18px';
+    m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;max-width:480px;width:100%;max-height:80vh;overflow:auto;padding:18px">
+      <h2 id="aiModalTitle" style="margin:0 0 12px;font-size:16px"></h2>
+      <div id="aiModalBody"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn" onclick="confirmModal()" style="flex:1">确认填入</button>
+        <button class="btn ghost" onclick="closeModal()" style="flex:1">取消</button>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+  }
+  $('aiModalTitle').textContent=title;
+  $('aiModalBody').innerHTML=bodyHtml;
+  m.style.display='flex';
+}
+function confirmModal(){ if(_modalConfirm) _modalConfirm(); }
+function closeModal(){ const m=$('aiModal'); if(m) m.style.display='none'; _modalConfirm=null; }
+
+/* ============ 初始化 ============ */
+/* 清掉上次会话残留在本地的分配方案(_currentPlan 每次刷新都是空的,
+   否则计算/冲突页会显示上次的旧方案,产生误导) */
+(function clearStalePlan(){
+  const a=lsGet(LS_IPOS);
+  if(Array.isArray(a)&&a.length){
+    let changed=false;
+    a.forEach(it=>{ if(it._allocations!==undefined||it._allocLots!==undefined||it.invest){ delete it._allocations; delete it._allocLots; it.invest=0; changed=true; } });
+    if(changed) saveIpos(a);
+  }
+})();
+getBrokers();
+renderIpoList();
+setStrategy('groupB'); // 初始化分配策略描述
+refreshAiUI();
+</script>
+</body>
+</html>

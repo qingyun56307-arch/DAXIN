@@ -6,19 +6,50 @@
 <title>港股打新助手</title>
 <style>
   :root{
-    --bg:#0d1b1e; --surface:#13262b; --surface-2:#1a3138; --line:#244249;
-    --ink:#e8f0f1; --ink-soft:#9fb6ba; --ink-faint:#6b8589;
-    --teal:#2dd4bf; --teal-deep:#0d9488; --amber:#fbbf24; --rose:#fb7185; --green:#34d399;
-    --shadow:0 4px 24px rgba(0,0,0,.35);
+    --bg:#071a2a; --surface:#0d2740; --surface-2:#143552; --line:#1f4d73;
+    --ink:#f2f8ff; --ink-soft:#9ec2e0; --ink-faint:#6f97b8;
+    --teal:#3de0ff; --teal-deep:#1aa7ff; --amber:#ffd166; --rose:#ff6b8a; --green:#3dffb0;
+    --brand:#5ee1ff; --brand-2:#7cffb2;
+    --shadow:0 4px 24px rgba(0,20,40,.4);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
   body{max-width:540px;margin:0 auto;padding-bottom:88px;min-height:100vh}
 
-  header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#0d1b1e 0%,rgba(13,27,30,.92) 100%);backdrop-filter:blur(8px);padding:16px 20px 12px;border-bottom:1px solid var(--line)}
-  header h1{font-size:18px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:9px}
-  header h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal)}
+  header{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#071a2a 0%,rgba(7,26,42,.94) 100%);backdrop-filter:blur(8px);padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+  header .brand-row{display:flex;align-items:center;gap:10px}
+  header .logo-mark{
+    width:36px;height:36px;border-radius:10px;flex:0 0 auto;
+    background:linear-gradient(135deg,#1aa7ff 0%,#3de0ff 55%,#7cffb2 100%);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 0 1px rgba(94,225,255,.35),0 6px 16px rgba(26,167,255,.35);
+  }
+  header .logo-mark svg{width:22px;height:22px;display:block}
+  header .brand-text{min-width:0}
+  header .brand-name{font-size:15px;font-weight:800;letter-spacing:1px;color:var(--brand);line-height:1.1}
+  header h1{font-size:17px;font-weight:700;letter-spacing:.4px;margin-top:2px;display:flex;align-items:center;gap:8px}
+  header h1 .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal)}
   header p{font-size:11px;color:var(--ink-faint);margin-top:3px;letter-spacing:.3px}
+
+  .brand-cta{
+    margin:0 0 14px;padding:14px 12px 12px;border-radius:16px;
+    background:
+      radial-gradient(120px 80px at 12% 20%, rgba(61,224,255,.28), transparent 70%),
+      radial-gradient(140px 90px at 88% 10%, rgba(124,255,178,.22), transparent 70%),
+      linear-gradient(135deg,#0b3a63 0%,#0f4f86 48%,#0a6e8f 100%);
+    border:1px solid rgba(94,225,255,.35);
+    box-shadow:0 8px 24px rgba(0,40,80,.35);
+  }
+  .brand-cta .cta-title{font-size:13px;font-weight:700;color:#eaf9ff;margin-bottom:10px;letter-spacing:.3px}
+  .brand-cta .cta-title span{color:var(--amber)}
+  .qr-row{display:flex;gap:10px}
+  .qr-card{
+    flex:1;background:rgba(255,255,255,.96);border-radius:14px;padding:10px 8px 8px;
+    text-align:center;border:1px solid rgba(255,255,255,.7);
+  }
+  .qr-card img{width:100%;max-width:118px;aspect-ratio:1;object-fit:contain;display:block;margin:0 auto;border-radius:8px;background:#fff}
+  .qr-card .qr-label{margin-top:7px;font-size:12px;font-weight:700;color:#0b3a63;letter-spacing:.5px}
+  .qr-card .qr-sub{font-size:10px;color:#3d6f96;margin-top:1px}
 
   nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:540px;z-index:60;background:var(--surface);border-top:1px solid var(--line);display:flex;padding:7px 4px calc(7px + env(safe-area-inset-bottom))}
   nav button{flex:1;background:none;border:none;color:var(--ink-faint);font-size:10.5px;font-family:inherit;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:color .15s;border-radius:10px}
@@ -51,10 +82,10 @@
 
   .seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
   .seg button{flex:1;background:none;border:none;color:var(--ink-soft);font-size:13px;font-family:inherit;padding:8px;border-radius:7px;cursor:pointer;transition:all .15s;font-weight:500}
-  .seg button.on{background:var(--teal-deep);color:#fff}
+  .seg button.on{background:linear-gradient(135deg,var(--teal-deep),#2bd4ff);color:#fff}
   .fund-type{display:flex;gap:6px}
   .fund-type button{flex:1;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);font-size:12px;font-family:inherit;padding:7px;border-radius:8px;cursor:pointer}
-  .fund-type button.on{background:var(--teal-deep);color:#fff;border-color:var(--teal-deep)}
+  .fund-type button.on{background:linear-gradient(135deg,var(--teal-deep),#2bd4ff);color:#fff;border-color:transparent}
 
   .result{background:linear-gradient(135deg,var(--surface-2),#16323a);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:4px}
   .result .line{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
@@ -66,9 +97,9 @@
   .result .big .v{font-size:22px;color:var(--teal);font-weight:700}
   .pos{color:var(--green)!important}.neg{color:var(--rose)!important}.amber{color:var(--amber)!important}
 
-  .btn{width:100%;background:var(--teal-deep);color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:600;font-family:inherit;padding:13px;cursor:pointer;transition:filter .15s,transform .05s;letter-spacing:.5px}
+  .btn{width:100%;background:linear-gradient(135deg,var(--teal-deep),#2bd4ff);color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:600;font-family:inherit;padding:13px;cursor:pointer;transition:filter .15s,transform .05s;letter-spacing:.5px;box-shadow:0 6px 16px rgba(26,167,255,.28)}
   .btn:active{transform:scale(.99)}.btn:hover{filter:brightness(1.08)}
-  .btn.ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--ink)}
+  .btn.ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--ink);box-shadow:none}
   .btn.sm{padding:9px;font-size:13px;width:auto}
 
   .note{font-size:11px;color:var(--ink-faint);line-height:1.55;margin-top:10px;padding:10px 12px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.18);border-radius:9px}
@@ -170,11 +201,39 @@
 <body>
 
 <header>
-  <h1><span class="dot"></span>港股打新助手</h1>
+  <div class="brand-row">
+    <div class="logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3.5L19.5 8v8L12 20.5 4.5 16V8L12 3.5Z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M12 8.2l3.8 2.2v4.4L12 17l-3.8-2.2v-4.4L12 8.2Z" fill="#fff" opacity=".95"/>
+        <circle cx="12" cy="6.2" r="1.15" fill="#7CFFB2"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <div class="brand-name">鑫承投研</div>
+      <h1><span class="dot"></span>港股打新助手</h1>
+    </div>
+  </div>
   <p id="headerSub">招股价区间 · 资金策略 · 申购台账 · 冲突检查</p>
 </header>
 
 <main>
+
+<div class="brand-cta">
+  <div class="cta-title">扫码关注 / 扫码添加，获取更多<span>打新资讯</span></div>
+  <div class="qr-row">
+    <div class="qr-card">
+      <img src="assets/qr-follow.png" alt="鑫承投研公众号二维码" width="118" height="118">
+      <div class="qr-label">扫码关注</div>
+      <div class="qr-sub">鑫承投研</div>
+    </div>
+    <div class="qr-card">
+      <img src="assets/qr-add.png" alt="小助理微信二维码" width="118" height="118">
+      <div class="qr-label">扫码添加</div>
+      <div class="qr-sub">小助理</div>
+    </div>
+  </div>
+</div>
 
 <!-- ========== 第1格:录入新股 ========== -->
 <section class="view on" id="v-entry">
@@ -331,6 +390,7 @@
 
 
 <div class="foot-note">
+  鑫承投研 · 港股打新助手<br>
   数据仅保存在你自己的浏览器本地,不上传任何服务器。<br>
   计算为估算,中签结果以券商公布为准。
 </div>

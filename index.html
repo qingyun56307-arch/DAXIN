@@ -180,7 +180,7 @@
 <section class="view on" id="v-entry">
   <div class="card" id="aiEntryCard" style="display:none">
     <h2>🤖 AI 解析招股要素 <span class="tag">选填</span></h2>
-    <p class="sub">把招股书摘要或一段描述粘进来,AI 自动拆出名称、代码、招股价、每手、上市日等,核对后填入。</p>
+    <p class="sub">把招股书摘要或一段描述粘进来。优先走 AI 后端;连不上时自动用本地规则拆名称、代码、招股价、每手、上市日等,核对后填入。</p>
     <textarea id="aiEntryText" placeholder="例:精锋医疗,02675.HK,招股价50-54.8港元,每手100股,7月8日上市,保荐人中金..." style="width:100%;min-height:72px;padding:10px;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--ink);resize:vertical;font-family:inherit"></textarea>
     <button class="btn" onclick="aiParseEntry()" id="aiEntryBtn" style="margin-top:8px">解析并预览</button>
   </div>
@@ -307,11 +307,11 @@
     <div class="note">港股打新<b>资金不能跨账户合并</b>:每只新股只能用单个账户的钱打。同一持有人(本人/配偶)跨券商也算同一人,对同一只新股只能用一个账户。</div>
   </div>
   <div class="card">
-    <h2>AI 智能解析 <span class="tag">已内置</span></h2>
-    <p class="sub">录入页/分配页可用 AI 把一段文字自动拆成结构化信息,已内置后端,直接可用。如想用自己的智谱额度,可在下方填你自己的后端地址覆盖。</p>
+    <h2>AI 智能解析 <span class="tag">可配置</span></h2>
+    <p class="sub">录入/分配页可粘贴文字自动拆字段。内置后端若不可用,会自动改用本地规则解析;也可填自己的智谱转发地址覆盖。</p>
     <div class="field">
-      <label>自定义后端地址 <span class="hint">选填,留空用内置</span></label>
-      <input id="aiEndpoint" type="text" placeholder="留空即用内置后端" oninput="saveAiEndpoint(this.value)" style="font-size:13px">
+      <label>自定义后端地址 <span class="hint">选填,留空先试内置再本地兜底</span></label>
+      <input id="aiEndpoint" type="text" placeholder="https://你的-worker.workers.dev" oninput="saveAiEndpoint(this.value)" style="font-size:13px">
     </div>
     <div id="aiStatus" style="font-size:11px;margin-top:4px"></div>
   </div>
@@ -1416,39 +1416,162 @@ function resetAll(){ if(!confirm('确认清空所有数据?券商、账户、台
 
 /* ============ AI 智能解析 ============ */
 const LS_AI='hkipo_ai_endpoint';
-const DEFAULT_AI_ENDPOINT='https://winter-wind-be5a12138.qingyun56307.workers.dev'; // 内置后端,别人打开即用
+const DEFAULT_AI_ENDPOINT='https://winter-wind-be5a12138.qingyun56307.workers.dev'; // 内置后端(可能失效,失败时本地兜底)
 function getAiEndpoint(){ const saved=lsGetObj(LS_AI,'')||''; return saved||DEFAULT_AI_ENDPOINT; }
 function saveAiEndpoint(v){ lsSet(LS_AI,(v||'').trim()); refreshAiUI(); }
 function refreshAiUI(){
-  const ep=getAiEndpoint();
-  const on=!!ep;
-  const ec=$('aiEntryCard'); if(ec) ec.style.display=on?'block':'none';
-  const ac=$('aiAllocCard'); if(ac) ac.style.display=on?'block':'none';
+  const ec=$('aiEntryCard'); if(ec) ec.style.display='block';
+  const ac=$('aiAllocCard'); if(ac) ac.style.display='block';
   const saved=lsGetObj(LS_AI,'')||'';
-  const inp=$('aiEndpoint'); if(inp&&document.activeElement!==inp) inp.value=saved; // 只显示用户自填的,不覆盖默认
+  const inp=$('aiEndpoint'); if(inp&&document.activeElement!==inp) inp.value=saved;
   const st=$('aiStatus');
   if(st){
     if(saved) st.innerHTML='<span style="color:var(--teal)">✓ 已配置自定义后端</span>';
-    else st.innerHTML='<span style="color:var(--teal)">✓ 已内置后端,AI 解析可直接用</span>(如要用自己的额度,可在上方填你的地址)';
+    else st.innerHTML='<span style="color:var(--amber)">内置后端若连不上,会自动用本地规则解析</span>(也可填自己的 Worker 地址)';
   }
 }
 
-/* 调用后端(后端转发到智谱),返回解析后的 JSON 字符串 */
+/* 本地规则解析招股要素(不依赖后端) */
+function localParseEntry(text, today){
+  const src=String(text||'').replace(/\r/g,'\n');
+  const year=(today||new Date().toISOString().slice(0,10)).slice(0,4);
+  function normDate(m,d){
+    const mm=String(m).padStart(2,'0'), dd=String(d).padStart(2,'0');
+    return `${year}-${mm}-${dd}`;
+  }
+  function pickCode(t){
+    let m=t.match(/(?:0?\d{4})\.HK\b/i); if(m) return m[0].replace(/\.HK$/i,'').padStart(5,'0');
+    m=t.match(/(?:股票代码|代号|代码|股份代号)[：:\s]*([0-9]{4,5})/); if(m) return m[1].padStart(5,'0');
+    m=t.match(/\b(0\d{4})\b/); if(m) return m[1];
+    return '';
+  }
+  function pickName(t){
+    const bad=/招股|发行|市值|公开发售|每手|保荐|上市|申购|流通|手数|港元|港币|亿|万|总手/;
+    let m=t.match(/(?:新股|公司|发行人)[：:\s]*([\u4e00-\u9fffA-Za-z0-9·]{2,20})/);
+    if(m && !bad.test(m[1])) return m[1].replace(/[（(].*$/,'').trim();
+    m=t.match(/([\u4e00-\u9fff]{2,12})\s*[（(]?0?\d{4}(?:\.HK)?/i);
+    if(m && !bad.test(m[1])) return m[1];
+    m=t.match(/^[\s]*([\u4e00-\u9fffA-Za-z0-9·]{2,16})(?=\s|[（(0-9]|$)/);
+    if(m && !bad.test(m[1]) && !/^\d/.test(m[1])) return m[1];
+    return '';
+  }
+  function pickPrices(t){
+    let m=t.match(/(?:招股价|发售价|每股发售价|价格区间)[^\d]{0,12}(\d+(?:\.\d+)?)\s*[-~～至到]\s*(\d+(?:\.\d+)?)/);
+    if(m) return {low:m[1], high:m[2]};
+    m=t.match(/(\d+(?:\.\d+)?)\s*[-~～至到]\s*(\d+(?:\.\d+)?)\s*(?:港元|港币|HK\$|元)(?!\s*[亿万])/);
+    if(m){ const a=parseFloat(m[1]),b=parseFloat(m[2]); if(a>0&&b>0&&b<5000&&a<5000) return {low:String(Math.min(a,b)), high:String(Math.max(a,b))}; }
+    m=t.match(/(?:招股价|发售价)[^\d]{0,8}(\d+(?:\.\d+)?)\s*(?:港元|港币|HK\$|元)/);
+    if(m) return {low:m[1], high:m[1]};
+    return {low:'', high:''};
+  }
+  function pickLot(t){
+    let m=t.match(/(?:每手|买卖单位|每手股数)[^\d]{0,8}(\d{2,5})\s*股?/);
+    if(m) return m[1];
+    m=t.match(/(\d{2,5})\s*股\s*\/\s*手/);
+    if(m) return m[1];
+    /* 避免把「公开发售总手数216167手」当成每手 */
+    return '';
+  }
+  function pickListing(t){
+    let m=t.match(/(?:上市日|预计上市|上市日期)[^\d]{0,10}(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+    if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+    m=t.match(/(?:上市日|预计上市|上市日期)[^\d]{0,10}(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
+    if(m) return normDate(m[1],m[2]);
+    m=t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(?:上市|挂牌)/);
+    if(m) return normDate(m[1],m[2]);
+    return '';
+  }
+  function pickApply(t){
+    let m=t.match(/(?:申购日|认购截止|截止认购|招股截止)[^\d]{0,10}(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+    if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+    m=t.match(/(?:申购日|认购截止|截止认购|招股截止)[^\d]{0,10}(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
+    if(m) return normDate(m[1],m[2]);
+    return '';
+  }
+  function pickSponsor(t){
+    const m=t.match(/(?:保荐人|独家保荐|联席保荐|保荐)[：:\s]*([^\n，,；;。]{2,30})/);
+    return m?m[1].replace(/\s+/g,'').trim():'';
+  }
+  /* 按空行/明显分隔拆多只;多数情况一整段就是一只 */
+  const chunks=src.split(/\n{2,}|----+/).map(x=>x.trim()).filter(Boolean);
+  const blocks=chunks.length?chunks:[src];
+  const out=[];
+  blocks.forEach(block=>{
+    const prices=pickPrices(block);
+    const item={
+      name:pickName(block), code:pickCode(block), sponsor:pickSponsor(block),
+      priceLow:prices.low, priceHigh:prices.high, lotSize:pickLot(block),
+      listing:pickListing(block), applyDate:pickApply(block),
+      _source:'local'
+    };
+    if(item.name||item.code||item.priceHigh||item.lotSize||item.listing) out.push(item);
+  });
+  /* 若整段只抽出市值等无关数字、没有有效字段,尝试用整文再抽一次合并 */
+  if(!out.length){
+    const prices=pickPrices(src);
+    const item={
+      name:pickName(src), code:pickCode(src), sponsor:pickSponsor(src),
+      priceLow:prices.low, priceHigh:prices.high, lotSize:pickLot(src),
+      listing:pickListing(src), applyDate:pickApply(src), _source:'local'
+    };
+    if(item.name||item.code||item.priceHigh||item.lotSize||item.listing) out.push(item);
+  }
+  return out.filter(it=>it.name||it.code||it.priceHigh||it.lotSize||it.listing);
+}
+
+/* 本地规则解析分配偏好 */
+function localParseAlloc(preference, names){
+  const text=String(preference||'');
+  const list=(names||[]).map((name,i)=>{
+    const wanted=!new RegExp('(?:不打|放弃|跳过)\\s*'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(text)
+      && !(/全部放弃|都不打/.test(text) && !new RegExp('(?:打|要)\\s*'+name).test(text));
+    let priority=i+1;
+    const pm=text.match(new RegExp(name+'[^。；;\\n]{0,20}Top\\s*(\\d+)','i'))
+      || text.match(new RegExp('Top\\s*(\\d+)[^。；;\\n]{0,12}'+name,'i'))
+      || text.match(new RegExp('优先(?:级)?\\s*(\\d+)[^。；;\\n]{0,12}'+name));
+    if(pm) priority=parseInt(pm[1])||priority;
+    let position='normal';
+    if(new RegExp(name+'[^。；;\\n]{0,16}(?:小仓|摸一摸|少打)').test(text) || /都小仓|全部小仓/.test(text)) position='small';
+    let fund='cash';
+    if(new RegExp(name+'[^。；;\\n]{0,16}(?:融资|孖展)').test(text) || /都融资|全部融资|用融资/.test(text)) fund='margin';
+    else if(new RegExp(name+'[^。；;\\n]{0,16}自动').test(text) || /自动认购|能现金就现金/.test(text)) fund='auto';
+    else if(new RegExp(name+'[^。；;\\n]{0,16}现金').test(text) || /都现金|全部现金/.test(text)) fund='cash';
+    return {name, wanted, priority, position, fund};
+  });
+  /* 「只要A」类:未点名的默认放弃 */
+  if(/只要|仅打|只打/.test(text)){
+    list.forEach(r=>{
+      if(!new RegExp(r.name).test(text)) r.wanted=false;
+    });
+  }
+  return list;
+}
+
+/* 调用后端(后端转发到智谱),返回解析后的 JSON;失败抛错供上层兜底 */
 async function callAI(task, text){
   const ep=getAiEndpoint();
   if(!ep) throw new Error('未配置 AI 后端地址');
-  const today=new Date().toISOString().slice(0,10); // 当前日期 YYYY-MM-DD,给AI推算年份
-  const resp=await fetch(ep,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({task, text, today})
-  });
-  if(!resp.ok){ throw new Error('后端返回错误 '+resp.status); }
-  const data=await resp.json();
-  /* 后端应返回 {content:"..."},content 是 AI 输出的 JSON 文本 */
-  let raw=data.content||data.result||'';
-  raw=String(raw).replace(/```json|```/g,'').trim();
-  return JSON.parse(raw);
+  const today=new Date().toISOString().slice(0,10);
+  const ctrl=typeof AbortController!=='undefined'?new AbortController():null;
+  const timer=ctrl?setTimeout(()=>ctrl.abort(),12000):null;
+  try{
+    const resp=await fetch(ep,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({task, text, today}),
+      signal:ctrl?ctrl.signal:undefined
+    });
+    if(!resp.ok){ throw new Error('后端返回错误 '+resp.status); }
+    const data=await resp.json();
+    let raw=data.content||data.result||'';
+    raw=String(raw).replace(/```json|```/g,'').trim();
+    return JSON.parse(raw);
+  }catch(e){
+    const msg=e&&e.name==='AbortError'?'后端超时':(e&&e.message?e.message:'网络错误');
+    throw new Error(msg);
+  }finally{
+    if(timer) clearTimeout(timer);
+  }
 }
 
 /* —— 招股要素解析 —— */
@@ -1456,23 +1579,38 @@ async function aiParseEntry(){
   const text=$('aiEntryText').value.trim();
   if(!text){ alert('先粘贴招股描述'); return; }
   const btn=$('aiEntryBtn'); btn.textContent='解析中...'; btn.disabled=true;
+  const today=new Date().toISOString().slice(0,10);
   try{
-    const arr=await callAI('entry', text); // 期望返回新股数组
-    const list=Array.isArray(arr)?arr:(arr.ipos||[arr]);
-    showEntryConfirm(list);
-  }catch(e){ alert('解析失败:'+e.message); }
-  finally{ btn.textContent='解析并预览'; btn.disabled=false; }
+    let list=null, via='ai';
+    try{
+      const arr=await callAI('entry', text);
+      list=Array.isArray(arr)?arr:(arr.ipos||[arr]);
+    }catch(netErr){
+      list=localParseEntry(text, today);
+      via='local';
+      if(!list.length){
+        alert('内置 AI 后端连不上,且本地规则也没抽出有效字段。\n\n请在描述里带上例如:\n晶合集成 02249 招股价18.5-20.8港元 每手200股 7月15日上市 保荐中金\n\n或到「设置」填写可用的自定义后端地址。\n\n(网络错误: '+netErr.message+')');
+        return;
+      }
+    }
+    if(!list.length){ alert('没解析出新股,请补充招股价/每手/上市日等关键信息'); return; }
+    showEntryConfirm(list, via);
+  }catch(e){
+    alert('解析失败:'+e.message+'\n\n内置 AI 后端当前不可达。可:①改写描述含「招股价xx-yy、每手zz股、x月x日上市」再用本地解析;②在设置里填自己的后端地址。');
+  }finally{ btn.textContent='解析并预览'; btn.disabled=false; }
 }
-function showEntryConfirm(list){
+function showEntryConfirm(list, via){
   if(!list.length){ alert('没解析出新股'); return; }
+  const viaNote=via==='local'
+    ? '<p style="font-size:12px;color:var(--amber);margin-bottom:10px">内置 AI 后端不可用,已用<strong>本地规则</strong>提取。请务必核对数字;描述里尽量含招股价、每手、上市日。</p>'
+    : '<p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">AI 提取了 '+list.length+' 只新股,核对无误后填入(空缺项稍后手动补)。AI 可能有误,务必核对数字。</p>';
   const rows=list.map((it,i)=>`
     <div style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px;line-height:1.9">
       <b style="color:var(--teal)">${esc(it.name||'(无名称)')}</b> ${it.code?`<span style="color:var(--ink-faint)">${esc(it.code)}</span>`:''}<br>
       招股价 ${it.priceLow||'?'}~${it.priceHigh||'?'} · 每手 ${it.lotSize||'?'}股 · 上市 ${it.listing||'?'}<br>
       ${it.sponsor?`保荐 ${esc(it.sponsor)} · `:''}申购日 ${it.applyDate||'(未提供,需补)'}
     </div>`).join('');
-  showModal('确认招股要素', `<p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">AI 提取了 ${list.length} 只新股,核对无误后填入(空缺项稍后手动补)。AI 可能有误,务必核对数字。</p>${rows}`,
-    ()=>applyEntry(list));
+  showModal('确认招股要素', viaNote+rows, ()=>applyEntry(list));
 }
 function applyEntry(list){
   const a=getIpos().filter(it=>it.name||it.priceHigh); // 保留已有非空的
@@ -1496,23 +1634,32 @@ async function aiParseAlloc(){
   if(!ipos.length){ alert('请先在录入页填新股'); return; }
   const btn=$('aiAllocBtn'); btn.textContent='解析中...'; btn.disabled=true;
   try{
-    /* 把现有新股名单一起给 AI,让它对应 */
     const names=ipos.map(it=>it.name||it.code||('新股'+it.id));
-    const arr=await callAI('alloc', JSON.stringify({preference:text, ipos:names}));
-    const list=Array.isArray(arr)?arr:(arr.result||[]);
-    showAllocConfirm(list, ipos);
-  }catch(e){ alert('解析失败:'+e.message); }
-  finally{ btn.textContent='解析并预览'; btn.disabled=false; }
+    let list=null, via='ai';
+    try{
+      const arr=await callAI('alloc', JSON.stringify({preference:text, ipos:names}));
+      list=Array.isArray(arr)?arr:(arr.result||[]);
+    }catch(netErr){
+      list=localParseAlloc(text, names);
+      via='local';
+      if(!list.length) throw netErr;
+    }
+    showAllocConfirm(list, ipos, via);
+  }catch(e){
+    alert('解析失败:'+e.message+'\n\n可改用更直白的偏好,如「晶合集成 Top1 融资,另一只小仓现金」,将自动本地解析。');
+  }finally{ btn.textContent='解析并预览'; btn.disabled=false; }
 }
-function showAllocConfirm(list, ipos){
+function showAllocConfirm(list, ipos, via){
   const posMap={normal:'正常',small:'小仓(仅1户1手)'};
   const fundMap={cash:'现金',margin:'融资',auto:'自动'};
+  const viaNote=via==='local'
+    ? '<p style="font-size:12px;color:var(--amber);margin-bottom:10px">内置 AI 不可用,已用<strong>本地规则</strong>解析偏好,请核对。</p>'
+    : '<p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">AI 解析结果,核对后应用到分配页。</p>';
   const rows=list.map(r=>{
     return `<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px">
       <b>${esc(r.name||'?')}</b> — ${r.wanted===false?'<span style="color:var(--rose)">放弃</span>':`打 · 优先级Top${r.priority||2} · ${posMap[r.position]||'正常'} · ${fundMap[r.fund]||'现金'}`}
     </div>`;}).join('');
-  showModal('确认分配偏好', `<p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">AI 解析结果,核对后应用到分配页。</p>${rows}`,
-    ()=>applyAlloc(list, ipos));
+  showModal('确认分配偏好', viaNote+rows, ()=>applyAlloc(list, ipos));
 }
 function applyAlloc(list, ipos){
   const all=getIpos();
